@@ -1,0 +1,91 @@
+name: Parallax-3D.dmg
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          echo "Installed:"
+          ls /Applications | grep -i xcode || true
+          set +e
+          PICK=""
+          for p in \
+            /Applications/Xcode_27.app \
+            /Applications/Xcode_27.0.app \
+            /Applications/Xcode_26.6.app \
+            /Applications/Xcode_26.5.app \
+            /Applications/Xcode_26.app \
+            /Applications/Xcode.app
+          do
+            if [ -d "$p/Contents/Developer" ]; then
+              PICK="$p"
+              break
+            fi
+          done
+          if [ -n "$PICK" ]; then
+            sudo xcode-select -s "$PICK/Contents/Developer"
+            echo "Using $PICK"
+          fi
+          xcodebuild -version
+          swift --version
+
+      - name: Tests
+        run: swift test
+
+      - name: Build DMG
+        run: bash packaging/make-dmg.sh "$PWD/Parallax-3D.dmg"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Parallax-3D.dmg
+          path: Parallax-3D.dmg
+          if-no-files-found: error
+
+      - name: Publish Parallax-3D.dmg
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="v1.0.0"
+          TITLE="Parallax 3D 1.0.0"
+          test -f Parallax-3D.dmg
+          NOTES="$(cat <<'EOF'
+          ## Download
+
+          Nur **Parallax-3D.dmg** herunterladen (Disk-Image).
+
+          Nicht anfassen: *Source code (zip)* und *Source code (tar.gz)* — das ist Quelltext, nicht die App.
+
+          1. Parallax-3D.dmg öffnen (Doppelklick)
+          2. Parallax nach Programme ziehen
+          3. Rechtsklick → Öffnen (Gatekeeper)
+          4. Kamera erlauben
+          5. Kopf bewegen — das 3-D-Modell bleibt stehen, du schaust um es herum
+          6. Unten links: Live-Bild mit Iris-Markern **L** / **R**
+
+          Apple Silicon, macOS 14–27. **Kein Hand-Tracking.** Nur Eye-Tracking.
+
+          Ad-hoc signiert. Helios wurde nicht verändert und ist nicht Teil dieser App.
+          EOF
+          )"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TITLE" --notes "$NOTES" --latest || true
+          else
+            gh release create "$TAG" --title "$TITLE" --latest --notes "$NOTES"
+          fi
+          gh release upload "$TAG" Parallax-3D.dmg --clobber
+          gh release view "$TAG"

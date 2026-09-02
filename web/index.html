@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Parallax 3D</title>
+    <meta name="theme-color" content="#07080a" />
+    <link rel="icon" href="./icon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div class="vignette"></div>
+    <header>
+      <div>
+        <p class="kicker">Spatial display</p>
+        <h1>Parallax</h1>
+        <p class="lede">
+          Holografisches 3-D auf dem 2-D-Bildschirm. Kamera liest die Augen — das Modell bleibt, du schaust um es herum.
+        </p>
+      </div>
+      <div id="status" class="chip"><span class="dot"></span> Demo-Orbit</div>
+    </header>
+    <aside>
+      <section>
+        <p class="kicker">Modell</p>
+        <button data-model="orrery" class="active">Orrery</button>
+        <button data-model="relic">Relikt</button>
+        <button data-model="vessel">Vessel</button>
+      </section>
+    </aside>
+    <footer>
+      <section class="pip">
+        <div class="pip-head">
+          <span class="kicker">Eye tracking</span>
+          <span id="lock">IDLE</span>
+        </div>
+        <canvas id="track" width="320" height="180"></canvas>
+        <p id="coords" class="mono">X +0.000  Y +0.000  Z +0.550</p>
+        <div class="row">
+          <button id="cam" class="primary">Kamera starten</button>
+          <button id="demo">Demo</button>
+        </div>
+        <p id="err" class="err" hidden></p>
+      </section>
+    </footer>
+    <video id="video" playsinline muted hidden></video>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
