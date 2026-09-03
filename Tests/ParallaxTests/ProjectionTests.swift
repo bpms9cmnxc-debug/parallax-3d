@@ -98,6 +98,38 @@ final class ProjectionTests: XCTestCase {
         XCTAssertLessThan(abs(clip.x / clip.w), 0.3)
     }
 
+    func testCalibratedBezelMapsToScreenEdge() {
+        var cal = Calibration()
+        cal.screenW = 0.40
+        cal.screenH = 0.25
+        cal.leftNX = 0.30
+        cal.rightNX = 0.70
+        cal.centerNX = 0.50
+        cal.centerNY = 0.50
+        cal.ipdAtCenter = 0.08
+        cal.zAtCenter = 0.60
+        cal.completed = true
+        let left = OffAxis.faceToWorld(
+            midX: 0.30, midY: 0.50, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25,
+            sensitivity: 1, calibration: cal
+        )
+        let right = OffAxis.faceToWorld(
+            midX: 0.70, midY: 0.50, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25,
+            sensitivity: 1, calibration: cal
+        )
+        XCTAssertEqual(left.x, -0.20, accuracy: 0.01)
+        XCTAssertEqual(right.x, 0.20, accuracy: 0.01)
+    }
+
+    func testLidarOffsetMovesYToScreenCentre() {
+        let pkt = TrackerPacket(x: 0.01, y: -0.14, z: 0.62, ipd: 0.063, quality: 0.9, source: "lidar")
+        var cal = Calibration()
+        cal.iphoneOffsetY = 0.14
+        let w = OffAxis.lidarToScreen(pkt, calibration: cal)
+        XCTAssertEqual(w.y, 0, accuracy: 0.005)
+        XCTAssertEqual(w.z, 0.62, accuracy: 0.001)
+    }
+
     func testFaceHighInImageLooksFromAbove() {
         let high = OffAxis.faceToWorld(midX: 0.5, midY: 0.25, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1)
         let low = OffAxis.faceToWorld(midX: 0.5, midY: 0.75, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1)

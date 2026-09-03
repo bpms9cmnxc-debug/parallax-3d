@@ -37,6 +37,9 @@ struct ContentView: View {
             if phase == .active { model.start() }
             if phase == .background { model.stop() }
         }
+        .sheet(isPresented: $model.showCalibrate) {
+            CalibrationWizard(model: model)
+        }
     }
 
     private var gazeReticle: some View {
@@ -73,10 +76,18 @@ struct ContentView: View {
             }
             Spacer()
             HStack(spacing: 8) {
+                Button("Kalibrieren") { model.showCalibrate = true }
+                    .buttonStyle(PrimaryButtonStyle(filled: false))
                 Circle()
-                    .fill(model.live ? ParallaxTheme.live : ParallaxTheme.muted)
+                    .fill(model.live || model.iphone.connected ? ParallaxTheme.live : ParallaxTheme.muted)
                     .frame(width: 6, height: 6)
-                Text(model.live ? "TRACKING LIVE" : model.searching ? "SUCHE GESICHT" : model.mode == "mouse" ? "MAUS-PARALLAX" : "DEMO-ORBIT")
+                Text(
+                    model.iphone.connected ? "IPHONE LIDAR"
+                    : model.live ? "TRACKING LIVE"
+                    : model.searching ? "SUCHE GESICHT"
+                    : model.mode == "mouse" ? "MAUS-PARALLAX"
+                    : "DEMO-ORBIT"
+                )
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(ParallaxTheme.fg)
             }
@@ -118,6 +129,9 @@ struct ContentView: View {
             if let err = model.camera.errorMessage {
                 Text(err).font(.system(size: 12)).foregroundStyle(ParallaxTheme.danger)
             }
+            Text(model.iphone.status)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(model.iphone.connected ? ParallaxTheme.live : ParallaxTheme.muted)
 
             HStack(spacing: 8) {
                 Button(model.cameraActive ? "Kamera stoppen" : "Kamera starten") {
@@ -182,6 +196,19 @@ struct ContentView: View {
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(ParallaxTheme.muted)
 
+            Text("HOLOGRAMM-TIEFE")
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .tracking(1.6)
+                .foregroundStyle(ParallaxTheme.muted)
+                .padding(.top, 6)
+            Slider(
+                value: Binding(get: { Double(model.hologramDepth) }, set: { model.setDepth(Float($0)) }),
+                in: 0.04...0.24
+            )
+            Text("hinter der Scheibe  ·  \(String(format: "%.0f cm", model.hologramDepth * 100))")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(ParallaxTheme.muted)
+
             Text("3D-STÄRKE")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .tracking(1.6)
@@ -243,6 +270,7 @@ struct ContentView: View {
             row("FPS", "\(model.fps)")
             row("Modus", model.mode)
             row("Abstand", String(format: "%.0f cm", model.eye.z * 100))
+            row("Quelle", model.iphone.connected ? "LiDAR" : model.calibration.completed ? "kalibriert" : "webcam")
             row("Links", coord(model.eyes?.left))
             row("Rechts", coord(model.eyes?.right))
             row("Lock", model.live ? "ja" : "nein")
@@ -277,7 +305,7 @@ struct ContentView: View {
     }
 }
 
-private struct PrimaryButtonStyle: ButtonStyle {
+struct PrimaryButtonStyle: ButtonStyle {
     var filled: Bool
     func makeBody(configuration: Configuration) -> some View {
         configuration.label

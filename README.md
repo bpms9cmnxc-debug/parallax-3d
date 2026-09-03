@@ -16,9 +16,10 @@ Optisch inspiriert von der räumlichen Kamera-Idee hinter [Helios](https://githu
 2. Parallax nach **Programme** ziehen
 3. Erster Start: **Rechtsklick → Öffnen** (Gatekeeper, Ad-hoc-Signatur)
 4. Kamera erlauben
-5. Kopf langsam nach links / rechts / vor / zurück bewegen
-6. Unten links siehst du, wo das Eye-Tracking lockt (Marker **L** / **R**)
-7. Größe am Schieber. Eigene Datei: **Datei wählen** (OBJ, STL, DAE, USD, USDZ, SCN, PLY)
+5. **Kalibrieren** (oben rechts): Mitte, dann Kopf an die linke und rechte Displaykante
+6. Kopf langsam nach links / rechts / vor / zurück — du schaust *um* das Modell
+7. Optional: iPhone Pro mit LiDAR, App `ios/ParallaxTrack`, Rückkamera auf dich
+8. Unten links: Iris-Marker **L** / **R**. Größe, 3D-Stärke, Abstand, Hologramm-Tiefe rechts
 
 macOS 14–27, Apple Silicon.
 
@@ -28,7 +29,13 @@ macOS 14–27, Apple Silicon.
 - Objekte vor der Scheibe (z > 0) treten heraus, der Raum dahinter weicht zurück.
 - Live-Kamera mit Iris-Lock und Blickwinkel in Metern (X/Y/Z). FaceTime-Spiegelung: L bleibt visuell links, Blick nach rechts schaut von rechts um das Modell.
 - Modelle: Tasse, Büste, Auto, plus Import.
-- Manuelle Größe.
+- Kalibrierung: Bildschirmgröße in Metern, Blick von den Displaykanten = echte Geometrie
+- iPhone LiDAR (Pro, Rückkamera) als Abstandssensor über lokales Netz (`ios/ParallaxTrack`)
+- Hologramm sitzt hinter der Scheibe — Tiefe am Schieber
+
+## iPhone LiDAR
+
+Siehe [ios/README.md](ios/README.md). Continuity-Kamera allein liefert kein LiDAR an den Mac — deshalb eine kleine Companion-App, die `ARFrame.sceneDepth` am Gesicht sampelt und die Pose an den Mac schickt.
 
 ## Technik
 

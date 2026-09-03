@@ -24,7 +24,9 @@ final class EyeTracker {
         screenW: Float,
         screenH: Float,
         sensitivity: Float,
-        mirrored: Bool
+        mirrored: Bool,
+        calibration: Calibration? = nil,
+        distanceOverride: Float? = nil
     ) -> TrackedEyes? {
         let handler = VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .up, options: [:])
         do {
@@ -48,7 +50,9 @@ final class EyeTracker {
             screenW: screenW,
             screenH: screenH,
             sensitivity: sensitivity,
-            mirrored: mirrored
+            mirrored: mirrored,
+            distanceOverride: distanceOverride,
+            calibration: calibration
         )
         return TrackedEyes(
             left: L,

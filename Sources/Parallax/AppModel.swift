@@ -9,6 +9,7 @@ import SwiftUI
 final class AppModel: ObservableObject {
     let camera = CameraSession()
     let hologram = HologramController()
+    let iphone = TrackerLink()
     private let tracker = EyeTracker()
 
     @Published var eyes: TrackedEyes?
@@ -20,6 +21,9 @@ final class AppModel: ObservableObject {
     @Published var autoDistance = true
     @Published var distanceMeters: Float = OffAxis.defaultZ
     @Published var tooClose = false
+    @Published var hologramDepth: Float = 0.12
+    @Published var calibration = Calibration.load()
+    @Published var showCalibrate = false
     @Published var mode = "demo"
     @Published var eye = EyeWorld(x: 0, y: 0.02, z: OffAxis.defaultZ)
     @Published var fps = 0
@@ -42,7 +46,12 @@ final class AppModel: ObservableObject {
     func start() {
         guard !running else { return }
         running = true
+        if calibration.completed {
+            hologramDepth = max(0.04, calibration.depth)
+        }
         hologram.setEye(smoothed)
+        hologram.setDepth(hologramDepth)
+        iphone.start()
         camera.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
@@ -55,7 +64,9 @@ final class AppModel: ObservableObject {
                 screenW: size.w,
                 screenH: size.h,
                 sensitivity: self.sensitivity,
-                mirrored: self.camera.isMirrored
+                mirrored: self.camera.isMirrored,
+                calibration: self.calibration.completed ? self.calibration : nil,
+                distanceOverride: self.autoDistance ? nil : self.distanceMeters
             )
             DispatchQueue.main.async {
                 guard self.running, self.wantsCamera else { return }
@@ -92,6 +103,7 @@ final class AppModel: ObservableObject {
         timer = nil
         camera.stop()
         camera.onBuffer = nil
+        iphone.stop()
         bag.removeAll()
         eyes = nil
     }
@@ -165,9 +177,39 @@ final class AppModel: ObservableObject {
         distanceMeters = min(OffAxis.maxZ, max(OffAxis.minZ, meters))
     }
 
+    func setDepth(_ d: Float) {
+        hologramDepth = min(0.28, max(0.04, d))
+        hologram.setDepth(hologramDepth)
+        calibration.depth = hologramDepth
+        calibration.save()
+    }
+
+    func applyCalibration(_ cal: Calibration) {
+        var c = cal
+        c.completed = true
+        c.depth = hologramDepth
+        calibration = c
+        c.save()
+        hologram.setDepth(c.depth)
+        sensitivity = 1.0
+    }
+
+    func faceSample() -> (nx: Float, ny: Float, ipd: Float)? {
+        guard let e = eyes, let L = e.left, let R = e.right else { return nil }
+        let nx = Float((L.x + R.x) * 0.5)
+        let ny = Float(1 - (L.y + R.y) * 0.5)
+        return (nx, ny, e.ipd)
+    }
+
     private func step(_ dt: Float) {
         var target = smoothed
-        if live, let sample = eyes, sample.tracking {
+        if let pkt = iphone.latest, iphone.connected, pkt.quality > 0.25 {
+            var w = OffAxis.lidarToScreen(pkt, calibration: calibration)
+            tooClose = pkt.z < OffAxis.minZ
+            if !autoDistance { w.z = distanceMeters }
+            target = w
+            mode = "lidar"
+        } else if live, let sample = eyes, sample.tracking {
             var w = sample.world
             tooClose = OffAxis.rawDistance(ipdNorm: sample.ipd) < OffAxis.minZ
             if !autoDistance {
@@ -197,7 +239,7 @@ final class AppModel: ObservableObject {
         if hudClock >= 0.048 {
             hudClock = 0
             eye = smoothed
-            if live, autoDistance {
+            if autoDistance, mode == "camera" || mode == "lidar" {
                 distanceMeters = smoothed.z
             }
         }

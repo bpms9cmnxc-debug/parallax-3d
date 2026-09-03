@@ -21,7 +21,9 @@ final class HologramController: NSObject, ObservableObject {
     private var pendingModelId: String?
     private var pendingImported: SCNNode?
     private var pendingScale: Float?
+    private var pendingDepth: Float?
     private var modelScale: Float = 1
+    private var hologramDepth: Float = 0.12
 
     var screenWidth: Float { screenSize().w }
     var screenHeight: Float { screenSize().h }
@@ -50,6 +52,7 @@ final class HologramController: NSObject, ObservableObject {
         scene.rootNode.addChildNode(cameraNode)
         scene.rootNode.addChildNode(room)
         scene.rootNode.addChildNode(stage)
+        stage.simdPosition = SIMD3(0, 0, -0.12)
         addLights()
         rebuildRoom()
         applyModel("mug")
@@ -78,6 +81,12 @@ final class HologramController: NSObject, ObservableObject {
     func setScale(_ s: Float) {
         eyeLock.lock()
         pendingScale = s
+        eyeLock.unlock()
+    }
+
+    func setDepth(_ d: Float) {
+        eyeLock.lock()
+        pendingDepth = d
         eyeLock.unlock()
     }
 
@@ -122,6 +131,8 @@ final class HologramController: NSObject, ObservableObject {
         pendingImported = nil
         let queuedScale = pendingScale
         pendingScale = nil
+        let queuedDepth = pendingDepth
+        pendingDepth = nil
         let sw = screenW
         let sh = screenH
         eyeLock.unlock()
@@ -133,6 +144,10 @@ final class HologramController: NSObject, ObservableObject {
         if let queuedScale {
             modelScale = min(2.6, max(0.3, queuedScale))
             stage.simdScale = SIMD3(repeating: modelScale)
+        }
+        if let queuedDepth {
+            hologramDepth = min(0.28, max(0.04, queuedDepth))
+            stage.simdPosition = SIMD3(0, 0, -hologramDepth)
         }
         applyEye(e, screenW: sw, screenH: sh)
         elapsed += dt
@@ -192,7 +207,7 @@ final class HologramController: NSObject, ObservableObject {
         room.childNodes.forEach { $0.removeFromParentNode() }
         let w = CGFloat(screenW)
         let h = CGFloat(screenH)
-        let d: CGFloat = 1.15
+        let d: CGFloat = 1.55
         let wall = mat(NSColor(red: 0.09, green: 0.10, blue: 0.13, alpha: 1), glow: 0.04, phong: false)
 
         func plane(_ sw: CGFloat, _ sh: CGFloat) -> SCNNode {
@@ -245,7 +260,7 @@ final class HologramController: NSObject, ObservableObject {
 
         let plinth = SCNNode(geometry: SCNCylinder(radius: 0.09, height: 0.028))
         plinth.geometry?.firstMaterial = mat(NSColor(red: 0.78, green: 0.82, blue: 0.86, alpha: 1), glow: 0.2)
-        plinth.position = SCNVector3(0, -h / 2 + 0.016, 0.0)
+        plinth.position = SCNVector3(0, -h / 2 + 0.016, -0.08)
         plinth.castsShadow = true
         room.addChildNode(plinth)
     }

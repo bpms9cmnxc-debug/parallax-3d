@@ -97,8 +97,16 @@ public enum OffAxis {
         screenH: Float,
         sensitivity: Float,
         mirrored: Bool = false,
-        distanceOverride: Float? = nil
+        distanceOverride: Float? = nil,
+        calibration: Calibration? = nil
     ) -> EyeWorld {
+        if let cal = calibration, cal.completed {
+            return calibratedWorld(
+                midX: midX, midY: midY, ipdNorm: ipdNorm,
+                sensitivity: sensitivity, mirrored: mirrored,
+                distanceOverride: distanceOverride, cal: cal
+            )
+        }
         let nx = mirrored ? (midX - 0.5) * 2 : (0.5 - midX) * 2
         let ny = (0.5 - midY) * 2
         let z = distanceOverride.map { simd_clamp($0, minZ, maxZ) } ?? clampedDistance(ipdNorm: ipdNorm)
@@ -107,6 +115,42 @@ public enum OffAxis {
             x: nx * screenW * lateralGain * gain,
             y: ny * screenH * verticalGain * gain,
             z: z
+        )
+    }
+
+    /// Left bezel sample → −screenW/2, right bezel → +screenW/2. Real window geometry.
+    public static func calibratedWorld(
+        midX: Float,
+        midY: Float,
+        ipdNorm: Float,
+        sensitivity: Float,
+        mirrored: Bool,
+        distanceOverride: Float?,
+        cal: Calibration
+    ) -> EyeWorld {
+        _ = mirrored
+        let lo = min(cal.leftNX, cal.rightNX)
+        let hi = max(cal.leftNX, cal.rightNX)
+        let span = max(0.10, hi - lo)
+        let t = (midX - lo) / span
+        let gain = max(0.7, sensitivity)
+        let x = (t - 0.5) * cal.screenW * gain
+        let mPer = cal.screenW / span
+        let y = (cal.centerNY - midY) * mPer * gain
+        let z: Float
+        if let d = distanceOverride {
+            z = simd_clamp(d, minZ, maxZ)
+        } else {
+            z = simd_clamp(cal.zAtCenter * (cal.ipdAtCenter / max(ipdNorm, 0.02)), minZ, maxZ)
+        }
+        return EyeWorld(x: x, y: y, z: z)
+    }
+
+    public static func lidarToScreen(_ packet: TrackerPacket, calibration: Calibration) -> EyeWorld {
+        EyeWorld(
+            x: packet.x,
+            y: packet.y + calibration.iphoneOffsetY,
+            z: simd_clamp(packet.z, minZ, maxZ)
         )
     }
 }
