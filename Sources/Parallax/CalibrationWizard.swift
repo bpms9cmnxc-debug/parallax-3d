@@ -86,7 +86,7 @@ struct CalibrationWizard: View {
         case 4:
             return "Optional: iPhone 12 Pro oder neuer oben an den Mac, Rückkamera + LiDAR auf dich. App „Parallax Track“ starten (im Repo unter ios/). LiDAR misst den Abstand in Zentimetern — dann fühlt sich Vor- und Zurücklehnen richtig an. Ohne iPhone reicht die Webcam."
         default:
-            return "Kalibrierung liegt. 3D-Stärke bei 1,0 ist physikalisch; höher = theatralischer. Hologramm-Tiefe schiebt das Modell hinter die Scheibe, damit du wirklich um es herumschaust."
+            return "Kalibrierung liegt. Das Objekt sitzt in der Scheibe — das Zentrum bleibt, du siehst die Seiten. Volumen macht es dicker zum Umschauen. 3D-Stärke bei 1,0 ist physikalisch."
         }
     }
 

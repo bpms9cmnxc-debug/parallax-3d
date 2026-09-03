@@ -53,7 +53,7 @@ public struct Calibration: Codable, Equatable, Sendable {
         leftNX: Float = 0.28,
         rightNX: Float = 0.72,
         iphoneOffsetY: Float = 0.14,
-        depth: Float = 0.12,
+        depth: Float = 1.4,
         completed: Bool = false
     ) {
         self.screenW = screenW

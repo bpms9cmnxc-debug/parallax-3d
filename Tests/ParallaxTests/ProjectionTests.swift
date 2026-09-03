@@ -130,6 +130,15 @@ final class ProjectionTests: XCTestCase {
         XCTAssertEqual(w.z, 0.62, accuracy: 0.001)
     }
 
+    func testScreenPlaneOriginStaysCenteredWhenLookingAside() {
+        let eye = SIMD3<Float>(0.16, 0.02, 0.58)
+        let P = OffAxis.projection(eye: eye, screenW: 0.4, screenH: 0.25)
+        let cam = SIMD4<Float>(-eye.x, -eye.y, -eye.z, 1)
+        let clip = simd_mul(P, cam)
+        XCTAssertEqual(clip.x / clip.w, 0, accuracy: 0.03)
+        XCTAssertEqual(clip.y / clip.w, 0, accuracy: 0.03)
+    }
+
     func testFaceHighInImageLooksFromAbove() {
         let high = OffAxis.faceToWorld(midX: 0.5, midY: 0.25, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1)
         let low = OffAxis.faceToWorld(midX: 0.5, midY: 0.75, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1)

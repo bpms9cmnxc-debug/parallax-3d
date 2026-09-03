@@ -34,10 +34,12 @@ struct HologramView: NSViewRepresentable {
         view.scene = controller.scene
         view.backgroundColor = NSColor(red: 0.027, green: 0.031, blue: 0.039, alpha: 1)
         view.antialiasingMode = .multisampling4X
-        view.autoenablesDefaultLighting = true
+        view.autoenablesDefaultLighting = false
         view.allowsCameraControl = false
         view.rendersContinuously = true
         view.isPlaying = true
+        view.isJitteringEnabled = false
+        view.isTemporalAntialiasingEnabled = false
         view.preferredFramesPerSecond = 60
         view.delegate = context.coordinator
         view.pointOfView = controller.cameraNode

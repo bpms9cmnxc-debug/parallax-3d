@@ -62,7 +62,7 @@ enum ModelImporter {
         let scale = 0.22 / maxDim
         wrap.simdScale = SIMD3(repeating: scale)
         wrap.simdPosition.y = -0.02 + sizeY * 0.5 * scale
-        wrap.simdPosition.z = -0.04
+        wrap.simdPosition.z = 0
         wrap.enumerateHierarchy { node, _ in
             node.castsShadow = true
             guard let geo = node.geometry else { return }

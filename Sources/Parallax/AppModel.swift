@@ -21,7 +21,7 @@ final class AppModel: ObservableObject {
     @Published var autoDistance = true
     @Published var distanceMeters: Float = OffAxis.defaultZ
     @Published var tooClose = false
-    @Published var hologramDepth: Float = 0.12
+    @Published var hologramDepth: Float = 1.4
     @Published var calibration = Calibration.load()
     @Published var showCalibrate = false
     @Published var mode = "demo"
@@ -47,7 +47,8 @@ final class AppModel: ObservableObject {
         guard !running else { return }
         running = true
         if calibration.completed {
-            hologramDepth = max(0.04, calibration.depth)
+            let d = calibration.depth
+            hologramDepth = d < 0.5 ? 1.4 : min(2.2, max(0.8, d))
         }
         hologram.setEye(smoothed)
         hologram.setDepth(hologramDepth)
@@ -178,7 +179,7 @@ final class AppModel: ObservableObject {
     }
 
     func setDepth(_ d: Float) {
-        hologramDepth = min(0.28, max(0.04, d))
+        hologramDepth = min(2.2, max(0.8, d))
         hologram.setDepth(hologramDepth)
         calibration.depth = hologramDepth
         calibration.save()

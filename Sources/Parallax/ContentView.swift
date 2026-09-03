@@ -196,16 +196,16 @@ struct ContentView: View {
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(ParallaxTheme.muted)
 
-            Text("HOLOGRAMM-TIEFE")
+            Text("VOLUMEN")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .tracking(1.6)
                 .foregroundStyle(ParallaxTheme.muted)
                 .padding(.top, 6)
             Slider(
                 value: Binding(get: { Double(model.hologramDepth) }, set: { model.setDepth(Float($0)) }),
-                in: 0.04...0.24
+                in: 0.8...2.2
             )
-            Text("hinter der Scheibe  ·  \(String(format: "%.0f cm", model.hologramDepth * 100))")
+            Text("Objekt bleibt in der Scheibe  ·  \(String(format: "%.2f×", model.hologramDepth))")
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(ParallaxTheme.muted)
 

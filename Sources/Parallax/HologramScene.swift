@@ -23,7 +23,7 @@ final class HologramController: NSObject, ObservableObject {
     private var pendingScale: Float?
     private var pendingDepth: Float?
     private var modelScale: Float = 1
-    private var hologramDepth: Float = 0.12
+    private var hologramDepth: Float = 1.4
 
     var screenWidth: Float { screenSize().w }
     var screenHeight: Float { screenSize().h }
@@ -52,7 +52,7 @@ final class HologramController: NSObject, ObservableObject {
         scene.rootNode.addChildNode(cameraNode)
         scene.rootNode.addChildNode(room)
         scene.rootNode.addChildNode(stage)
-        stage.simdPosition = SIMD3(0, 0, -0.12)
+        stage.simdPosition = SIMD3.zero
         addLights()
         rebuildRoom()
         applyModel("mug")
@@ -114,6 +114,13 @@ final class HologramController: NSObject, ObservableObject {
             model.removeFromParentNode()
             stage.addChildNode(model)
         }
+        applyStageTransform()
+    }
+
+    private func applyStageTransform() {
+        stage.simdPosition = SIMD3.zero
+        // Uniform XY, extra Z so you see the sides — centroid stays on the glass.
+        stage.simdScale = SIMD3(modelScale, modelScale, modelScale * hologramDepth)
     }
 
     func setEye(_ eye: EyeWorld) {
@@ -143,11 +150,12 @@ final class HologramController: NSObject, ObservableObject {
         if let queuedModel { applyModel(queuedModel) }
         if let queuedScale {
             modelScale = min(2.6, max(0.3, queuedScale))
-            stage.simdScale = SIMD3(repeating: modelScale)
         }
         if let queuedDepth {
-            hologramDepth = min(0.28, max(0.04, queuedDepth))
-            stage.simdPosition = SIMD3(0, 0, -hologramDepth)
+            hologramDepth = min(2.2, max(0.8, queuedDepth))
+        }
+        if queuedScale != nil || queuedDepth != nil {
+            applyStageTransform()
         }
         applyEye(e, screenW: sw, screenH: sh)
         elapsed += dt
@@ -205,8 +213,8 @@ final class HologramController: NSObject, ObservableObject {
 
     private func rebuildRoom() {
         room.childNodes.forEach { $0.removeFromParentNode() }
-        let w = CGFloat(screenW)
-        let h = CGFloat(screenH)
+        let w = CGFloat(screenW) * 1.04
+        let h = CGFloat(screenH) * 1.04
         let d: CGFloat = 1.55
         let wall = mat(NSColor(red: 0.09, green: 0.10, blue: 0.13, alpha: 1), glow: 0.04, phong: false)
 
@@ -260,7 +268,7 @@ final class HologramController: NSObject, ObservableObject {
 
         let plinth = SCNNode(geometry: SCNCylinder(radius: 0.09, height: 0.028))
         plinth.geometry?.firstMaterial = mat(NSColor(red: 0.78, green: 0.82, blue: 0.86, alpha: 1), glow: 0.2)
-        plinth.position = SCNVector3(0, -h / 2 + 0.016, -0.08)
+        plinth.position = SCNVector3(0, -h / 2 + 0.016, 0)
         plinth.castsShadow = true
         room.addChildNode(plinth)
     }
@@ -270,7 +278,7 @@ final class HologramController: NSObject, ObservableObject {
         let g = SCNNode()
         var verts: [SCNVector3] = []
         let x0 = -w / 2, y0 = -h / 2
-        let z0: CGFloat = 0.02
+        let z0: CGFloat = -0.05
         let z1 = -d * 0.88
         let frames = 4
         for iz in 0...frames {
@@ -302,10 +310,12 @@ final class HologramController: NSObject, ObservableObject {
         mat.lightingModel = .constant
         mat.diffuse.contents = NSColor(red: 0.38, green: 0.44, blue: 0.50, alpha: 1)
         mat.emission.contents = NSColor(red: 0.12, green: 0.16, blue: 0.19, alpha: 1)
-        mat.writesToDepthBuffer = true
-        mat.readsFromDepthBuffer = true
+        mat.writesToDepthBuffer = false
+        mat.readsFromDepthBuffer = false
         geo.firstMaterial = mat
-        g.addChildNode(SCNNode(geometry: geo))
+        let node = SCNNode(geometry: geo)
+        node.renderingOrder = -20
+        g.addChildNode(node)
         return g
     }
 
@@ -353,7 +363,7 @@ final class HologramController: NSObject, ObservableObject {
         stripe.eulerAngles.x = .pi / 2
         root.addChildNode(stripe)
         root.addChildNode(node(SCNCylinder(radius: 0.052, height: 0.014), cup, at: SCNVector3(0, -0.07, 0)))
-        root.position = SCNVector3(0, 0.02, -0.04)
+        root.position = SCNVector3(0, 0.02, 0)
         return root
     }
 
@@ -395,7 +405,7 @@ final class HologramController: NSObject, ObservableObject {
             mat(NSColor(red: 0.78, green: 0.82, blue: 0.86, alpha: 1), glow: 0.28),
             at: SCNVector3(0, -0.042, 0)
         ))
-        root.position = SCNVector3(0, 0.0, -0.04)
+        root.position = SCNVector3(0, 0.0, 0)
         return root
     }
 
@@ -434,7 +444,7 @@ final class HologramController: NSObject, ObservableObject {
             mat(NSColor(red: 0.37, green: 0.92, blue: 0.83, alpha: 1), glow: 0.7),
             at: SCNVector3(0, 0.102, 0.082)
         ))
-        root.position = SCNVector3(0, -0.01, -0.04)
+        root.position = SCNVector3(0, -0.01, 0)
         root.eulerAngles.y = -0.55
         return root
     }
