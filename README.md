@@ -28,10 +28,10 @@ macOS 14–27, Apple Silicon.
 - Erkennbare, selbstleuchtende 3-D-Objekte (Tasse, Büste, Auto) vor einem dünnen Fensterrahmen — nicht hinter einem Drahtkäfig.
 - Objekte vor der Scheibe (z > 0) treten heraus, der Raum dahinter weicht zurück.
 - Live-Kamera mit Iris-Lock und Blickwinkel in Metern (X/Y/Z). FaceTime-Spiegelung: L bleibt visuell links, Blick nach rechts schaut von rechts um das Modell.
-- Modelle: Tasse, Büste, Auto, plus Import.
+- Modelle: Tasse, Büste, Auto, plus Import auf dem Mac (OBJ, STL, DAE, USD, USDZ, SCN, PLY).
 - Kalibrierung: Bildschirmgröße in Metern, Blick von den Displaykanten = echte Geometrie
 - iPhone LiDAR (Pro, Rückkamera) als Abstandssensor über lokales Netz (`ios/ParallaxTrack`)
-- Hologramm sitzt hinter der Scheibe — Tiefe am Schieber
+- Hologramm sitzt in der Scheibe; der Volumen-Schieber schiebt es hinter das Glas, ohne die Geometrie in Z zu strecken.
 
 ## iPhone LiDAR
 
@@ -40,9 +40,9 @@ Siehe [ios/README.md](ios/README.md). Continuity-Kamera allein liefert kein LiDA
 ## Technik
 
 - **Vision** `VNDetectFaceLandmarksRequest` — Pupillen / Augen, nicht Hände
-- **SceneKit** Off-Axis-Projektion (sheared frustum)
+- **SceneKit** Off-Axis-Projektion (sheared frustum), Simulation auf dem Render-Callback
 - FaceTime-Buffer gespiegelt (`isVideoMirrored`) — Look-around-X und Overlay passen dazu
-- Import über NSOpenPanel + ModelIO (lokal)
+- Import über NSOpenPanel + ModelIO (lokal). GLB/GLTF/FBX sind auf dem Mac nicht unterstützt.
 - Kamera und Dateien bleiben auf dem Gerät
 
 ```
@@ -54,7 +54,14 @@ GitHub Actions (`macos-26`, Xcode 26/27) legt bei Push auf `main` die DMG als Re
 
 ## Browser-Demo
 
-`web/` ist dieselbe Projektion mit MediaPipe Face Landmarker, zum Ausprobieren ohne Build. GLB/GLTF/OBJ/STL/FBX/PLY-Import sitzt in der Live-Demo.
+`web/` ist dieselbe Off-Axis-Projektion mit MediaPipe Face Landmarker, zum Ausprobieren ohne Build. Die Web-Demo hat **keinen** Datei-Import; Formate wie GLB/FBX stehen dort nicht zur Verfügung.
+
+## 1.4.2
+
+- Flackern: Bildschirmmaß wird gecacht, Projektion nur bei echter Augenbewegung, Simulation auf dem SceneKit-Vsync statt einem zweiten 60-Hz-Timer.
+- 3-D-Gefühl: Modelle werden nicht mehr in Z gestreckt. Volumen verschiebt das Objekt durch die Scheibe. Lateral-Gain höher, damit Kopfbewegung um die Seiten führt.
+- Auto: Radachsen zeigen quer zur Fahrtrichtung (Z), nicht längs (X).
+- Licht folgt dem Blickwinkel.
 
 ## Lizenz
 
