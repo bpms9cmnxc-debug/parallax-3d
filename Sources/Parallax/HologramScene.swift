@@ -17,7 +17,7 @@ final class HologramController: NSObject, ObservableObject {
     private var screenH: Float = 0.25
     private var elapsed: Float = 0
     private let eyeLock = NSLock()
-    private var pendingEye = EyeWorld(x: 0, y: 0.02, z: 0.55)
+    private var pendingEye = EyeWorld(x: 0, y: 0.02, z: OffAxis.defaultZ)
     private var pendingModelId: String?
     private var pendingImported: SCNNode?
     private var pendingScale: Float?
@@ -42,11 +42,11 @@ final class HologramController: NSObject, ObservableObject {
         scene.lightingEnvironment.contents = NSColor(white: 0.62, alpha: 1)
         scene.lightingEnvironment.intensity = 1.6
 
-        camera.zNear = 0.04
-        camera.zFar = 8
+        camera.zNear = Double(OffAxis.near)
+        camera.zFar = Double(OffAxis.far)
         camera.fieldOfView = 32
         cameraNode.camera = camera
-        cameraNode.position = SCNVector3(0, 0.02, 0.55)
+        cameraNode.position = SCNVector3(0, 0.02, OffAxis.defaultZ)
         scene.rootNode.addChildNode(cameraNode)
         scene.rootNode.addChildNode(room)
         scene.rootNode.addChildNode(stage)
@@ -55,13 +55,14 @@ final class HologramController: NSObject, ObservableObject {
         applyModel("mug")
     }
 
-    func resize(aspect: Float) {
-        let w = 0.235 * max(aspect, 0.5)
+    func resize(widthMeters: Float, heightMeters: Float) {
+        let w = max(0.16, min(0.7, widthMeters))
+        let h = max(0.10, min(0.5, heightMeters))
         eyeLock.lock()
-        let unchanged = abs(w - screenW) < 0.002
+        let unchanged = abs(w - screenW) < 0.004 && abs(h - screenH) < 0.004
         if !unchanged {
-            screenH = 0.235
             screenW = w
+            screenH = h
         }
         eyeLock.unlock()
         if unchanged { return }
@@ -138,7 +139,7 @@ final class HologramController: NSObject, ObservableObject {
     }
 
     private func applyEye(_ eye: EyeWorld, screenW: Float, screenH: Float) {
-        let e = SIMD3<Float>(eye.x, eye.y, max(0.12, eye.z))
+        let e = SIMD3<Float>(eye.x, eye.y, simd_clamp(eye.z, OffAxis.minZ, OffAxis.maxZ))
         cameraNode.position = SCNVector3(e.x, e.y, e.z)
         cameraNode.eulerAngles = SCNVector3Zero
         cameraNode.orientation = SCNQuaternion(0, 0, 0, 1)
@@ -303,6 +304,8 @@ final class HologramController: NSObject, ObservableObject {
         m.emission.contents = color.blended(withFraction: 1 - glow, of: .black) ?? color
         m.shininess = 28
         m.locksAmbientWithDiffuse = true
+        m.isDoubleSided = true
+        m.cullMode = .back
         m.writesToDepthBuffer = true
         m.readsFromDepthBuffer = true
         return m
@@ -335,7 +338,7 @@ final class HologramController: NSObject, ObservableObject {
         stripe.eulerAngles.x = .pi / 2
         root.addChildNode(stripe)
         root.addChildNode(node(SCNCylinder(radius: 0.052, height: 0.014), cup, at: SCNVector3(0, -0.07, 0)))
-        root.position = SCNVector3(0, 0.03, 0.02)
+        root.position = SCNVector3(0, 0.02, -0.04)
         return root
     }
 
@@ -377,7 +380,7 @@ final class HologramController: NSObject, ObservableObject {
             mat(NSColor(red: 0.78, green: 0.82, blue: 0.86, alpha: 1), glow: 0.28),
             at: SCNVector3(0, -0.042, 0)
         ))
-        root.position = SCNVector3(0, 0.01, 0.02)
+        root.position = SCNVector3(0, 0.0, -0.04)
         return root
     }
 
@@ -416,7 +419,7 @@ final class HologramController: NSObject, ObservableObject {
             mat(NSColor(red: 0.37, green: 0.92, blue: 0.83, alpha: 1), glow: 0.7),
             at: SCNVector3(0, 0.102, 0.082)
         ))
-        root.position = SCNVector3(0, -0.01, 0.02)
+        root.position = SCNVector3(0, -0.01, -0.04)
         root.eulerAngles.y = -0.55
         return root
     }

@@ -16,17 +16,29 @@ public struct EyeWorld: Equatable, Sendable {
 }
 
 public enum OffAxis {
-    /// Sheared frustum: screen sits on z = 0, viewer at `eye` (metres).
-    /// Moving the eye does not rotate the scene — you look *around* it.
+    /// Closest allowed viewer. Closer than this and the near plane slices the hologram
+    /// (“mittig = nichts mehr”). Desk range, not a webcam-fill selfie.
+    public static let minZ: Float = 0.45
+    public static let maxZ: Float = 0.95
+    public static let defaultZ: Float = 0.58
+    /// Near plane in metres — small and constant so the model at z≈0 is never clipped.
+    public static let near: Float = 0.022
+    public static let far: Float = 8
+    /// Lateral gain: a modest head move (~15 % of the frame) must already look *around* the object.
+    public static let lateralGain: Float = 1.55
+    public static let verticalGain: Float = 1.12
+
+    /// Sheared frustum: screen on z = 0, viewer at `eye`. Scene does not rotate.
     public static func frustum(
         eye: SIMD3<Float>,
         screenW: Float,
         screenH: Float,
         nearPad: Float = 0.08,
-        far: Float = 8
+        far: Float = OffAxis.far
     ) -> (left: Float, right: Float, bottom: Float, top: Float, near: Float, far: Float) {
-        let z = max(0.12, eye.z)
-        let near = min(max(0.04, z * nearPad), z * 0.45)
+        _ = nearPad
+        let z = max(minZ, eye.z)
+        let near = OffAxis.near
         let halfW = screenW * 0.5
         let halfH = screenH * 0.5
         let left = (near * (-halfW - eye.x)) / z
@@ -36,10 +48,7 @@ public enum OffAxis {
         return (left, right, bottom, top, near, far)
     }
 
-    /// Column-major 4×4. OpenGL `makePerspective`, then remapped to Metal
-    /// clip Z in [0, 1] — SceneKit on Apple Silicon clips anything with NDC z < 0.
-    /// (A GL matrix alone puts the hologram at the screen plane at z_ndc ≈ −1…0.8;
-    ///  the lattice further back can survive, which looks like “only a grid”.)
+    /// Column-major OpenGL perspective, remapped to Metal clip Z in [0, 1].
     public static func projectionMatrix(
         left: Float, right: Float, top: Float, bottom: Float, near: Float, far: Float
     ) -> simd_float4x4 {
@@ -55,7 +64,6 @@ public enum OffAxis {
             SIMD4(a, b, c, -1),
             SIMD4(0, 0, d, 0)
         ))
-        // ndc.z_metal = 0.5 * ndc.z_gl + 0.5
         let glToMetal = simd_float4x4(columns: (
             SIMD4(1, 0, 0, 0),
             SIMD4(0, 1, 0, 0),
@@ -70,9 +78,17 @@ public enum OffAxis {
         return projectionMatrix(left: f.left, right: f.right, top: f.top, bottom: f.bottom, near: f.near, far: f.far)
     }
 
-    /// Webcam face sample → viewer position in metres.
-    /// Unmirrored buffer: face moving to the user's right appears at smaller x.
-    /// Mirrored FaceTime buffer (`mirrored: true`): face moving right appears at larger x.
+    /// IPD fraction of the frame → metres. 63 mm IPD, ~70° FaceTime FOV.
+    public static func rawDistance(ipdNorm: Float) -> Float {
+        0.045 / max(ipdNorm, 0.02)
+    }
+
+    public static func clampedDistance(ipdNorm: Float) -> Float {
+        simd_clamp(rawDistance(ipdNorm: ipdNorm), minZ, maxZ)
+    }
+
+    /// Webcam face → viewer in metres.
+    /// `distanceOverride` (metres) replaces IPD depth when the user calibrates manually.
     public static func faceToWorld(
         midX: Float,
         midY: Float,
@@ -80,14 +96,16 @@ public enum OffAxis {
         screenW: Float,
         screenH: Float,
         sensitivity: Float,
-        mirrored: Bool = false
+        mirrored: Bool = false,
+        distanceOverride: Float? = nil
     ) -> EyeWorld {
         let nx = mirrored ? (midX - 0.5) * 2 : (0.5 - midX) * 2
         let ny = (0.5 - midY) * 2
-        let z = simd_clamp(0.56 * (0.078 / max(ipdNorm, 0.02)), 0.28, 1.25)
+        let z = distanceOverride.map { simd_clamp($0, minZ, maxZ) } ?? clampedDistance(ipdNorm: ipdNorm)
+        let gain = max(0.6, sensitivity)
         return EyeWorld(
-            x: nx * screenW * 0.72 * sensitivity,
-            y: ny * screenH * 0.62 * sensitivity,
+            x: nx * screenW * lateralGain * gain,
+            y: ny * screenH * verticalGain * gain,
             z: z
         )
     }

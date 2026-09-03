@@ -1,6 +1,30 @@
 import AppKit
+import CoreGraphics
 import SceneKit
 import SwiftUI
+
+enum ScreenMeasure {
+    /// Physical size of the SceneKit view in metres — the hologram portal.
+    static func meters(for view: NSView) -> (w: Float, h: Float) {
+        let screen = view.window?.screen ?? NSScreen.main
+        let fallback: (Float, Float) = (0.30, 0.19)
+        guard let screen else { return fallback }
+        let key = NSDeviceDescriptionKey("NSScreenNumber")
+        let id: CGDirectDisplayID
+        if let num = screen.deviceDescription[key] as? NSNumber {
+            id = CGDirectDisplayID(num.uint32Value)
+        } else {
+            id = CGMainDisplayID()
+        }
+        let mm = CGDisplayScreenSize(id)
+        let frame = screen.frame
+        guard mm.width > 40, frame.width > 20 else { return fallback }
+        let mpp = Float(mm.width / 1000) / Float(frame.width)
+        let w = Float(max(view.bounds.width, 1)) * mpp
+        let h = Float(max(view.bounds.height, 1)) * mpp
+        return (max(0.16, w), max(0.10, h))
+    }
+}
 
 struct HologramView: NSViewRepresentable {
     let controller: HologramController
@@ -41,9 +65,8 @@ struct HologramView: NSViewRepresentable {
             last = time
             controller.tick(dt: Float(dt))
             if let view = renderer as? SCNView {
-                let w = Float(max(view.bounds.width, 1))
-                let h = Float(max(view.bounds.height, 1))
-                controller.resize(aspect: w / h)
+                let m = ScreenMeasure.meters(for: view)
+                controller.resize(widthMeters: m.w, heightMeters: m.h)
             }
         }
     }

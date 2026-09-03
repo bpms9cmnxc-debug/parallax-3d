@@ -62,6 +62,7 @@ enum ModelImporter {
         let scale = 0.22 / maxDim
         wrap.simdScale = SIMD3(repeating: scale)
         wrap.simdPosition.y = -0.02 + sizeY * 0.5 * scale
+        wrap.simdPosition.z = -0.04
         wrap.enumerateHierarchy { node, _ in
             node.castsShadow = true
             guard let geo = node.geometry else { return }
@@ -76,6 +77,7 @@ enum ModelImporter {
                     mat.emission.contents = NSColor(white: 0.22, alpha: 1)
                 }
                 mat.locksAmbientWithDiffuse = true
+                mat.isDoubleSided = true
             }
         }
         return wrap
@@ -87,6 +89,7 @@ enum ModelImporter {
         m.diffuse.contents = NSColor(red: 0.86, green: 0.89, blue: 0.93, alpha: 1)
         m.emission.contents = NSColor(white: 0.28, alpha: 1)
         m.locksAmbientWithDiffuse = true
+        m.isDoubleSided = true
         return m
     }
 

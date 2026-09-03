@@ -182,18 +182,51 @@ struct ContentView: View {
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(ParallaxTheme.muted)
 
-            Text("EMPFINDLICHKEIT")
+            Text("3D-STÄRKE")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .tracking(1.6)
                 .foregroundStyle(ParallaxTheme.muted)
                 .padding(.top, 6)
             Slider(
                 value: Binding(get: { Double(model.sensitivity) }, set: { model.sensitivity = Float($0) }),
-                in: 0.6...1.8
+                in: 0.8...2.6
             )
-            Text(String(format: "%.2f×", model.sensitivity))
+            Text("Blickwinkel  ·  \(String(format: "%.2f×", model.sensitivity))")
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(ParallaxTheme.muted)
+
+            Text("ABSTAND")
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .tracking(1.6)
+                .foregroundStyle(ParallaxTheme.muted)
+                .padding(.top, 6)
+            HStack(spacing: 8) {
+                Button(model.autoDistance ? "Auto" : "Manuell") {
+                    model.autoDistance.toggle()
+                }
+                .buttonStyle(PrimaryButtonStyle(filled: model.autoDistance))
+                Text(String(format: "%.0f cm", model.distanceMeters * 100))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(ParallaxTheme.muted)
+            }
+            Slider(
+                value: Binding(
+                    get: { Double(model.distanceMeters) },
+                    set: { model.setDistance(Float($0)) }
+                ),
+                in: Double(0.45)...Double(0.95)
+            )
+            if model.tooClose {
+                Text("Zu nah am Bildschirm — setz dich etwas zurück, sonst schneidet die Near-Plane das Modell.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(ParallaxTheme.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("Kopfbewegung seitlich = um das Objekt herumschauen. Abstand aus Iris-Abstand, manuell überschreibbar.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(ParallaxTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(12)
         .frame(width: 240)
@@ -209,6 +242,7 @@ struct ContentView: View {
                 .foregroundStyle(ParallaxTheme.muted)
             row("FPS", "\(model.fps)")
             row("Modus", model.mode)
+            row("Abstand", String(format: "%.0f cm", model.eye.z * 100))
             row("Links", coord(model.eyes?.left))
             row("Rechts", coord(model.eyes?.right))
             row("Lock", model.live ? "ja" : "nein")

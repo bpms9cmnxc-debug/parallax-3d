@@ -16,9 +16,12 @@ final class AppModel: ObservableObject {
     @Published var modelScale: Float = 1
     @Published var importName: String?
     @Published var importError: String?
-    @Published var sensitivity: Float = 1.15
+    @Published var sensitivity: Float = 1.4
+    @Published var autoDistance = true
+    @Published var distanceMeters: Float = OffAxis.defaultZ
+    @Published var tooClose = false
     @Published var mode = "demo"
-    @Published var eye = EyeWorld(x: 0, y: 0.02, z: 0.55)
+    @Published var eye = EyeWorld(x: 0, y: 0.02, z: OffAxis.defaultZ)
     @Published var fps = 0
 
     private var demoT: Float = 0
@@ -30,7 +33,7 @@ final class AppModel: ObservableObject {
     private var lastLock: TimeInterval = 0
     private var running = false
     private var wantsCamera = false
-    private var smoothed = EyeWorld(x: 0, y: 0.02, z: 0.55)
+    private var smoothed = EyeWorld(x: 0, y: 0.02, z: OffAxis.defaultZ)
 
     var live: Bool { wantsCamera && camera.isRunning && (eyes?.tracking ?? false) }
     var searching: Bool { wantsCamera && !(eyes?.tracking ?? false) }
@@ -157,31 +160,46 @@ final class AppModel: ObservableObject {
         mode = "demo"
     }
 
+    func setDistance(_ meters: Float) {
+        autoDistance = false
+        distanceMeters = min(OffAxis.maxZ, max(OffAxis.minZ, meters))
+    }
+
     private func step(_ dt: Float) {
         var target = smoothed
-        if live, let w = eyes?.world {
+        if live, let sample = eyes, sample.tracking {
+            var w = sample.world
+            tooClose = OffAxis.rawDistance(ipdNorm: sample.ipd) < OffAxis.minZ
+            if !autoDistance {
+                w.z = distanceMeters
+            }
             target = w
             mode = "camera"
         } else if !camera.isRunning {
+            tooClose = false
             demoT += dt
             target = EyeWorld(
-                x: sin(demoT * 0.55) * 0.22,
-                y: sin(demoT * 0.37) * 0.10 + 0.02,
-                z: 0.50 + sin(demoT * 0.22) * 0.12
+                x: sin(demoT * 0.62) * 0.30,
+                y: sin(demoT * 0.41) * 0.12 + 0.02,
+                z: 0.58 + sin(demoT * 0.18) * 0.06
             )
             mode = "demo"
         }
-        let k = 1 - exp(-10 * dt)
+        let kxy = 1 - exp(-14 * dt)
+        let kz = 1 - exp(-5 * dt)
         smoothed = EyeWorld(
-            x: smoothed.x + (target.x - smoothed.x) * k,
-            y: smoothed.y + (target.y - smoothed.y) * k,
-            z: smoothed.z + (target.z - smoothed.z) * k
+            x: smoothed.x + (target.x - smoothed.x) * kxy,
+            y: smoothed.y + (target.y - smoothed.y) * kxy,
+            z: min(OffAxis.maxZ, max(OffAxis.minZ, smoothed.z + (target.z - smoothed.z) * kz))
         )
         hologram.setEye(smoothed)
         hudClock += dt
         if hudClock >= 0.048 {
             hudClock = 0
             eye = smoothed
+            if live, autoDistance {
+                distanceMeters = smoothed.z
+            }
         }
         frames += 1
         fpsClock += dt

@@ -63,6 +63,41 @@ final class ProjectionTests: XCTestCase {
         XCTAssertLessThan(ndc.z, 1)
     }
 
+    func testCloseFaceDoesNotEnterTheHologram() {
+        let close = OffAxis.faceToWorld(midX: 0.5, midY: 0.5, ipdNorm: 0.22, screenW: 0.4, screenH: 0.25, sensitivity: 1)
+        XCTAssertGreaterThanOrEqual(close.z, OffAxis.minZ)
+        XCTAssertGreaterThan(close.z, OffAxis.near + 0.3)
+    }
+
+    func testSideLookIsARealAngle() {
+        let side = OffAxis.faceToWorld(
+            midX: 0.32, midY: 0.5, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1.4, mirrored: true
+        )
+        XCTAssertLessThan(side.x, -0.18)
+        let angle = atan(abs(side.x) / side.z) * 180 / Float.pi
+        XCTAssertGreaterThan(angle, 18)
+    }
+
+    func testManualDistanceOverride() {
+        let auto = OffAxis.faceToWorld(midX: 0.5, midY: 0.5, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1)
+        let forced = OffAxis.faceToWorld(
+            midX: 0.5, midY: 0.5, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1, distanceOverride: 0.7
+        )
+        XCTAssertGreaterThan(abs(auto.z - forced.z), 0.01)
+        XCTAssertEqual(forced.z, 0.7, accuracy: 0.001)
+    }
+
+    func testCenteredHologramStaysInsideClipAtMinDistance() {
+        let eye = SIMD3<Float>(0, 0.02, OffAxis.minZ)
+        let P = OffAxis.projection(eye: eye, screenW: 0.4, screenH: 0.25)
+        let cam = SIMD4<Float>(0, -0.02, -OffAxis.minZ, 1)
+        let clip = simd_mul(P, cam)
+        let ndcZ = clip.z / clip.w
+        XCTAssertGreaterThan(ndcZ, 0)
+        XCTAssertLessThan(ndcZ, 1)
+        XCTAssertLessThan(abs(clip.x / clip.w), 0.3)
+    }
+
     func testFaceHighInImageLooksFromAbove() {
         let high = OffAxis.faceToWorld(midX: 0.5, midY: 0.25, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1)
         let low = OffAxis.faceToWorld(midX: 0.5, midY: 0.75, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1)
