@@ -59,17 +59,19 @@ public enum OffAxis {
         return projectionMatrix(left: f.left, right: f.right, top: f.top, bottom: f.bottom, near: f.near, far: f.far)
     }
 
-    /// Webcam face sample → viewer position in metres. Selfie camera: face moving
-    /// to the user's right appears at smaller x.
+    /// Webcam face sample → viewer position in metres.
+    /// Unmirrored buffer: face moving to the user's right appears at smaller x.
+    /// Mirrored FaceTime buffer (`mirrored: true`): face moving right appears at larger x.
     public static func faceToWorld(
         midX: Float,
         midY: Float,
         ipdNorm: Float,
         screenW: Float,
         screenH: Float,
-        sensitivity: Float
+        sensitivity: Float,
+        mirrored: Bool = false
     ) -> EyeWorld {
-        let nx = (0.5 - midX) * 2
+        let nx = mirrored ? (midX - 0.5) * 2 : (0.5 - midX) * 2
         let ny = (0.5 - midY) * 2
         let z = simd_clamp(0.56 * (0.078 / max(ipdNorm, 0.02)), 0.28, 1.25)
         return EyeWorld(

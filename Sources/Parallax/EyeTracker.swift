@@ -45,7 +45,8 @@ final class EyeTracker {
             ipdNorm: ipd,
             screenW: screenW,
             screenH: screenH,
-            sensitivity: sensitivity
+            sensitivity: sensitivity,
+            mirrored: true
         )
         return TrackedEyes(
             left: L,

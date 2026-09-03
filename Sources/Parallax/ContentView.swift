@@ -5,9 +5,10 @@ struct ContentView: View {
     @StateObject private var model = AppModel()
 
     private let models = [
-        ("orrery", "Orrery", "Gyroskopische Ringe um einen Kern"),
-        ("relic", "Relikt", "Torus im Käfig — von der Seite anders"),
-        ("vessel", "Vessel", "Raumschiff, Bug ragt aus dem Bildschirm"),
+        ("mug", "Tasse", "Henkel rechts — von der Seite ein anderes Profil"),
+        ("bust", "Büste", "Kopf mit Nase und Augen. Blick von der Seite zeigt das Ohr"),
+        ("car", "Auto", "Karosserie, Räder, Kanzel. Bug ragt nach vorn"),
+        ("import", "Import", "OBJ, STL, DAE, USD, USDZ, SCN, PLY"),
     ]
 
     var body: some View {
@@ -143,9 +144,10 @@ struct ContentView: View {
                         Text(item.1)
                             .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(model.modelId == item.0 ? ParallaxTheme.bg : ParallaxTheme.fg)
-                        Text(item.2)
+                        Text(item.0 == "import" && model.importName != nil ? model.importName! : item.2)
                             .font(.system(size: 11))
                             .foregroundStyle(model.modelId == item.0 ? ParallaxTheme.bg.opacity(0.7) : ParallaxTheme.muted)
+                            .lineLimit(2)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
@@ -157,6 +159,25 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
             }
+            Button("Datei wählen") { model.pickImport() }
+                .buttonStyle(PrimaryButtonStyle(filled: false))
+            if let err = model.importError {
+                Text(err).font(.system(size: 11)).foregroundStyle(ParallaxTheme.danger)
+            }
+
+            Text("GRÖSSE")
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .tracking(1.6)
+                .foregroundStyle(ParallaxTheme.muted)
+                .padding(.top, 6)
+            Slider(
+                value: Binding(get: { Double(model.modelScale) }, set: { model.setScale(Float($0)) }),
+                in: 0.4...2.4
+            )
+            Text(String(format: "%.2f×", model.modelScale))
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(ParallaxTheme.muted)
+
             Text("EMPFINDLICHKEIT")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .tracking(1.6)

@@ -18,21 +18,25 @@ Optisch inspiriert von der räumlichen Kamera-Idee hinter [Helios](https://githu
 4. Kamera erlauben
 5. Kopf langsam nach links / rechts / vor / zurück bewegen
 6. Unten links siehst du, wo das Eye-Tracking lockt (Marker **L** / **R**)
+7. Größe am Schieber. Eigene Datei: **Datei wählen** (OBJ, STL, DAE, USD, USDZ, SCN, PLY)
 
 macOS 14–27, Apple Silicon.
 
 ## Was du siehst
 
-- Echtes 3-D-Modell in einem räumlichen **Gitter**. Von der Seite sieht es anders aus als von vorn.
+- Erkennbare 3-D-Objekte in einem räumlichen **Gitter**. Von der Seite sieht eine Tasse, Büste oder ein Auto anders aus als von vorn.
 - Objekte vor der Scheibe (z > 0) treten heraus, der Raum dahinter weicht zurück.
-- Live-Kamera mit Iris-Lock und Blickwinkel in Metern (X/Y/Z).
-- Modelle: Orrery, Relikt, Vessel.
+- Live-Kamera mit Iris-Lock und Blickwinkel in Metern (X/Y/Z). FaceTime-Spiegelung: L bleibt visuell links, Blick nach rechts schaut von rechts um das Modell.
+- Modelle: Tasse, Büste, Auto, plus Import.
+- Manuelle Größe.
 
 ## Technik
 
 - **Vision** `VNDetectFaceLandmarksRequest` — Pupillen / Augen, nicht Hände
 - **SceneKit** Off-Axis-Projektion (sheared frustum)
-- Kamera lokal, nichts wird hochgeladen
+- FaceTime-Buffer gespiegelt (`isVideoMirrored`) — Look-around-X und Overlay passen dazu
+- Import über NSOpenPanel + ModelIO (lokal)
+- Kamera und Dateien bleiben auf dem Gerät
 
 ```
 swift test
@@ -43,7 +47,7 @@ GitHub Actions (`macos-26`, Xcode 26/27) legt bei Push auf `main` die DMG als Re
 
 ## Browser-Demo
 
-`web/` ist dieselbe Projektion mit MediaPipe Face Landmarker, zum Ausprobieren ohne Build.
+`web/` ist dieselbe Projektion mit MediaPipe Face Landmarker, zum Ausprobieren ohne Build. GLB/GLTF/OBJ/STL/FBX/PLY-Import sitzt in der Live-Demo.
 
 ## Lizenz
 

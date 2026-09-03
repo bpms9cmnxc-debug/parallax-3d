@@ -1,4 +1,5 @@
 import AVFoundation
+import AppKit
 import Combine
 import Foundation
 import ParallaxCore
@@ -11,7 +12,10 @@ final class AppModel: ObservableObject {
     private let tracker = EyeTracker()
 
     @Published var eyes: TrackedEyes?
-    @Published var modelId = "orrery"
+    @Published var modelId = "mug"
+    @Published var modelScale: Float = 1
+    @Published var importName: String?
+    @Published var importError: String?
     @Published var sensitivity: Float = 1.15
     @Published var mode = "demo"
     @Published var eye = EyeWorld(x: 0, y: 0.02, z: 0.55)
@@ -89,8 +93,44 @@ final class AppModel: ObservableObject {
     }
 
     func setModel(_ id: String) {
+        if id == "import", importName == nil {
+            pickImport()
+            return
+        }
         modelId = id
         hologram.setModel(id)
+    }
+
+    func setScale(_ s: Float) {
+        modelScale = s
+        hologram.setScale(s)
+    }
+
+    func pickImport() {
+        let panel = NSOpenPanel()
+        panel.title = "3-D-Modell importieren"
+        panel.prompt = "Importieren"
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = ModelImporter.allowedTypes
+        panel.begin { [weak self] result in
+            guard result == .OK, let url = panel.url else { return }
+            self?.loadImported(url: url)
+        }
+    }
+
+    private func loadImported(url: URL) {
+        do {
+            let node = try ModelImporter.load(url: url)
+            hologram.setImported(node)
+            importName = url.lastPathComponent
+            importError = nil
+            modelScale = 1
+            hologram.setScale(1)
+            modelId = "import"
+        } catch {
+            importError = error.localizedDescription
+        }
     }
 
     func startCamera() {

@@ -14,11 +14,7 @@ struct EyeTrackingOverlay: View {
             Canvas { ctx, size in
                 if let preview {
                     let img = ctx.resolve(Image(nsImage: preview))
-                    ctx.translateBy(x: size.width, y: 0)
-                    ctx.scaleBy(x: -1, y: 1)
                     ctx.draw(img, in: CGRect(origin: .zero, size: size))
-                    ctx.scaleBy(x: -1, y: 1)
-                    ctx.translateBy(x: -size.width, y: 0)
                 }
 
                 if let face {
@@ -51,13 +47,13 @@ struct EyeTrackingOverlay: View {
         .allowsHitTesting(false)
     }
 
+    /// FaceTime-mirrored buffer: x already matches the selfie preview. Vision y is bottom-left.
     private func vis(_ p: CGPoint, _ size: CGSize) -> CGPoint {
-        CGPoint(x: (1 - p.x) * size.width, y: (1 - p.y) * size.height)
+        CGPoint(x: p.x * size.width, y: (1 - p.y) * size.height)
     }
 
     private func vis(_ r: CGRect, _ size: CGSize) -> CGRect {
-        // Vision box origin is bottom-left; preview is selfie-mirrored in Canvas.
-        let x = (1 - (r.minX + r.width)) * size.width
+        let x = r.minX * size.width
         let y = (1 - (r.minY + r.height)) * size.height
         return CGRect(
             x: x,

@@ -60,7 +60,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VER=$(python3 -c "import re,pathlib; t=pathlib.Path('macos/Info.plist').read_text(); m=re.search(r'CFBundleShortVersionString</key>\s*<string>([^<]+)', t); print(m.group(1) if m else '1.0.2')")
+          VER=$(python3 -c "import re,pathlib; t=pathlib.Path('macos/Info.plist').read_text(); m=re.search(r'CFBundleShortVersionString</key>\s*<string>([^<]+)', t); print(m.group(1) if m else '1.1.0')")
           TAG="v$VER"
           TITLE="Parallax 3D $VER"
           test -f Parallax-3D.dmg
@@ -76,11 +76,12 @@ jobs:
           3. Rechtsklick → Öffnen (Gatekeeper)
           4. Kamera erlauben
           5. Kopf bewegen — das 3-D-Modell bleibt stehen, du schaust um es herum
-          6. Unten links: Live-Bild mit Iris-Markern **L** / **R**
+          6. Unten links: Live-Bild mit Iris-Markern **L** / **R** (FaceTime-Spiegelung)
+          7. Größe am Schieber. Eigene Modelle: Datei wählen (OBJ, STL, DAE, USD, USDZ, SCN, PLY)
 
           Apple Silicon, macOS 14–27. **Kein Hand-Tracking.** Nur Eye-Tracking.
 
-          Ad-hoc signiert. Helios wurde nicht verändert und ist nicht Teil dieser App.
+          Modelle: Tasse, Büste, Auto. Ad-hoc signiert. Helios wurde nicht verändert und ist nicht Teil dieser App.
           EOF
           )"
           if gh release view "$TAG" >/dev/null 2>&1; then

@@ -30,6 +30,18 @@ final class ProjectionTests: XCTestCase {
         XCTAssertLessThan(right.x, 0)
     }
 
+    func testMacMirrorInvertsX() {
+        let unmirrored = OffAxis.faceToWorld(
+            midX: 0.75, midY: 0.5, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1, mirrored: false
+        )
+        let mirrored = OffAxis.faceToWorld(
+            midX: 0.75, midY: 0.5, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1, mirrored: true
+        )
+        XCTAssertLessThan(unmirrored.x, 0)
+        XCTAssertGreaterThan(mirrored.x, 0)
+        XCTAssertEqual(unmirrored.x, -mirrored.x, accuracy: 0.0001)
+    }
+
     func testProjectionHasPerspectiveDivide() {
         let m = OffAxis.projection(eye: SIMD3(0, 0, 0.55), screenW: 0.4, screenH: 0.25)
         XCTAssertEqual(m.columns.2.w, -1, accuracy: 0.0001)

@@ -81,8 +81,11 @@ final class CameraSession: NSObject, ObservableObject {
             return
         }
         session.addOutput(output)
-        // Leave the pixel buffer unmirrored so Vision matches the web tracker.
-        // The overlay mirrors only the preview.
+        // FaceTime-style selfie: mirrored buffer so L stays visual-left and look-around X matches.
+        if let conn = output.connection(with: .video), conn.isVideoMirroringSupported {
+            conn.automaticallyAdjustsVideoMirroring = false
+            conn.isVideoMirrored = true
+        }
         session.commitConfiguration()
 
         session.startRunning()
