@@ -80,9 +80,8 @@ final class AppModel: ObservableObject {
     }
 
     func startCamera() {
-        Task { [weak self] in
-            let ok = await AVCaptureDevice.requestAccess(for: .video)
-            await MainActor.run {
+        AVCaptureDevice.requestAccess(for: .video) { [weak self] ok in
+            DispatchQueue.main.async {
                 guard let self else { return }
                 if ok {
                     self.camera.start()
