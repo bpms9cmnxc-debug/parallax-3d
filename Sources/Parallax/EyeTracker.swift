@@ -15,6 +15,7 @@ struct TrackedEyes: Equatable {
 final class EyeTracker {
     private let request: VNDetectFaceLandmarksRequest = {
         let r = VNDetectFaceLandmarksRequest()
+        r.revision = 3
         return r
     }()
 
@@ -22,7 +23,8 @@ final class EyeTracker {
         buffer: CVPixelBuffer,
         screenW: Float,
         screenH: Float,
-        sensitivity: Float
+        sensitivity: Float,
+        mirrored: Bool
     ) -> TrackedEyes? {
         let handler = VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .up, options: [:])
         do {
@@ -46,7 +48,7 @@ final class EyeTracker {
             screenW: screenW,
             screenH: screenH,
             sensitivity: sensitivity,
-            mirrored: true
+            mirrored: mirrored
         )
         return TrackedEyes(
             left: L,

@@ -36,6 +36,7 @@ elif [[ -f "$ROOT/macos/AppIcon.png" ]]; then
 fi
 
 codesign --force --sign - \
+  --deep \
   --options runtime \
   --timestamp=none \
   --entitlements "$ROOT/macos/Parallax.entitlements" \

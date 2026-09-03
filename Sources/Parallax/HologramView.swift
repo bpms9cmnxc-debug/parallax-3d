@@ -13,6 +13,8 @@ struct HologramView: NSViewRepresentable {
         view.autoenablesDefaultLighting = true
         view.allowsCameraControl = false
         view.rendersContinuously = true
+        view.isPlaying = true
+        view.preferredFramesPerSecond = 60
         view.delegate = context.coordinator
         view.pointOfView = controller.cameraNode
         return view

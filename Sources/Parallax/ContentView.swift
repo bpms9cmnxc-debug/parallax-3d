@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var model = AppModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     private let models = [
         ("mug", "Tasse", "Henkel rechts — von der Seite ein anderes Profil"),
@@ -32,7 +33,10 @@ struct ContentView: View {
             .padding(24)
         }
         .onAppear { model.start() }
-        .onDisappear { model.stop() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { model.start() }
+            if phase == .background { model.stop() }
+        }
     }
 
     private var gazeReticle: some View {

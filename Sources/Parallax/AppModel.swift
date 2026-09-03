@@ -51,7 +51,8 @@ final class AppModel: ObservableObject {
                 buffer: pb,
                 screenW: size.w,
                 screenH: size.h,
-                sensitivity: self.sensitivity
+                sensitivity: self.sensitivity,
+                mirrored: self.camera.isMirrored
             )
             DispatchQueue.main.async {
                 guard self.running, self.wantsCamera else { return }
@@ -113,10 +114,10 @@ final class AppModel: ObservableObject {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.allowedContentTypes = ModelImporter.allowedTypes
-        panel.begin { [weak self] result in
-            guard result == .OK, let url = panel.url else { return }
-            self?.loadImported(url: url)
-        }
+        // runModal is reliable in a sandboxed SwiftUI app; begin() without a
+        // window often never appears.
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        loadImported(url: url)
     }
 
     private func loadImported(url: URL) {

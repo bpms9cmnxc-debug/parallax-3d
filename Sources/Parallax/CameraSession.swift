@@ -12,6 +12,8 @@ final class CameraSession: NSObject, ObservableObject {
     @Published var errorMessage: String?
     @Published var preview: NSImage?
     @Published var deviceName = "—"
+    /// True when the capture connection actually mirrors (FaceTime default).
+    private(set) var isMirrored = true
 
     var onBuffer: ((CVPixelBuffer) -> Void)?
 
@@ -81,11 +83,18 @@ final class CameraSession: NSObject, ObservableObject {
             return
         }
         session.addOutput(output)
-        // FaceTime-style selfie: mirrored buffer so L stays visual-left and look-around X matches.
-        if let conn = output.connection(with: .video), conn.isVideoMirroringSupported {
-            conn.automaticallyAdjustsVideoMirroring = false
-            conn.isVideoMirrored = true
+        var mirrored = false
+        if let conn = output.connection(with: .video) {
+            if conn.isVideoMirroringSupported {
+                conn.automaticallyAdjustsVideoMirroring = false
+                conn.isVideoMirrored = true
+                mirrored = conn.isVideoMirrored
+            }
+            if #available(macOS 14.0, *) {
+                conn.videoRotationAngle = 0
+            }
         }
+        self.isMirrored = mirrored
         session.commitConfiguration()
 
         session.startRunning()
