@@ -64,8 +64,18 @@ enum ModelImporter {
         wrap.simdPosition.y = -0.02 + sizeY * 0.5 * scale
         wrap.enumerateHierarchy { node, _ in
             node.castsShadow = true
-            if node.geometry?.materials.isEmpty == true {
-                node.geometry?.firstMaterial = fallbackMaterial()
+            guard let geo = node.geometry else { return }
+            if geo.materials.isEmpty {
+                geo.firstMaterial = fallbackMaterial()
+            }
+            for mat in geo.materials {
+                if mat.lightingModel == .physicallyBased {
+                    mat.lightingModel = .phong
+                }
+                if mat.emission.contents == nil {
+                    mat.emission.contents = NSColor(white: 0.22, alpha: 1)
+                }
+                mat.locksAmbientWithDiffuse = true
             }
         }
         return wrap
@@ -73,10 +83,10 @@ enum ModelImporter {
 
     private static func fallbackMaterial() -> SCNMaterial {
         let m = SCNMaterial()
-        m.lightingModel = .physicallyBased
-        m.diffuse.contents = NSColor(red: 0.773, green: 0.800, blue: 0.839, alpha: 1)
-        m.metalness.contents = 0.55
-        m.roughness.contents = 0.38
+        m.lightingModel = .phong
+        m.diffuse.contents = NSColor(red: 0.86, green: 0.89, blue: 0.93, alpha: 1)
+        m.emission.contents = NSColor(white: 0.28, alpha: 1)
+        m.locksAmbientWithDiffuse = true
         return m
     }
 

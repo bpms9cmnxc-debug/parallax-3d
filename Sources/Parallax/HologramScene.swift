@@ -36,9 +36,11 @@ final class HologramController: NSObject, ObservableObject {
         super.init()
         scene.background.contents = NSColor(red: 0.027, green: 0.031, blue: 0.039, alpha: 1)
         scene.fogColor = NSColor(red: 0.027, green: 0.031, blue: 0.039, alpha: 1)
-        scene.fogEndDistance = 4.5
-        scene.fogStartDistance = 1.4
-        scene.fogDensityExponent = 1.2
+        scene.fogStartDistance = 2.8
+        scene.fogEndDistance = 7
+        scene.fogDensityExponent = 1
+        scene.lightingEnvironment.contents = NSColor(white: 0.62, alpha: 1)
+        scene.lightingEnvironment.intensity = 1.6
 
         camera.zNear = 0.04
         camera.zFar = 8
@@ -150,26 +152,36 @@ final class HologramController: NSObject, ObservableObject {
         let amb = SCNNode()
         amb.light = SCNLight()
         amb.light?.type = .ambient
-        amb.light?.color = NSColor(white: 0.72, alpha: 1)
-        amb.light?.intensity = 220
+        amb.light?.color = NSColor(white: 0.92, alpha: 1)
+        amb.light?.intensity = 900
         scene.rootNode.addChildNode(amb)
 
         let key = SCNNode()
         key.light = SCNLight()
         key.light?.type = .directional
-        key.light?.color = NSColor(white: 0.95, alpha: 1)
-        key.light?.intensity = 900
+        key.light?.color = NSColor(red: 1, green: 0.97, blue: 0.92, alpha: 1)
+        key.light?.intensity = 1600
         key.light?.castsShadow = true
-        key.position = SCNVector3(0.4, 0.55, 0.7)
+        key.position = SCNVector3(0.45, 0.7, 0.9)
         key.look(at: SCNVector3Zero)
         scene.rootNode.addChildNode(key)
+
+        let fill = SCNNode()
+        fill.light = SCNLight()
+        fill.light?.type = .omni
+        fill.light?.color = NSColor(red: 0.75, green: 0.84, blue: 0.95, alpha: 1)
+        fill.light?.intensity = 700
+        fill.light?.attenuationStartDistance = 0.05
+        fill.light?.attenuationEndDistance = 2.4
+        fill.position = SCNVector3(-0.35, 0.2, 0.45)
+        scene.rootNode.addChildNode(fill)
 
         let rim = SCNNode()
         rim.light = SCNLight()
         rim.light?.type = .omni
-        rim.light?.color = NSColor(red: 0.91, green: 0.76, blue: 0.60, alpha: 1)
-        rim.light?.intensity = 500
-        rim.position = SCNVector3(0, 0.02, -0.02)
+        rim.light?.color = NSColor(red: 1, green: 0.88, blue: 0.7, alpha: 1)
+        rim.light?.intensity = 550
+        rim.position = SCNVector3(0.1, 0.12, -0.25)
         scene.rootNode.addChildNode(rim)
     }
 
@@ -178,11 +190,7 @@ final class HologramController: NSObject, ObservableObject {
         let w = CGFloat(screenW)
         let h = CGFloat(screenH)
         let d: CGFloat = 1.15
-        let wall = SCNMaterial()
-        wall.diffuse.contents = NSColor(red: 0.063, green: 0.071, blue: 0.094, alpha: 1)
-        wall.roughness.contents = 0.86
-        wall.metalness.contents = 0.08
-        wall.lightingModel = .physicallyBased
+        let wall = mat(NSColor(red: 0.09, green: 0.10, blue: 0.13, alpha: 1), glow: 0.04, phong: false)
 
         func plane(_ sw: CGFloat, _ sh: CGFloat) -> SCNNode {
             let n = SCNNode(geometry: SCNPlane(width: sw, height: sh))
@@ -216,11 +224,7 @@ final class HologramController: NSObject, ObservableObject {
 
         room.addChildNode(volumeGrid(w: w, h: h, d: d))
 
-        let edge = SCNMaterial()
-        edge.diffuse.contents = NSColor(red: 0.545, green: 0.576, blue: 0.620, alpha: 1)
-        edge.metalness.contents = 0.85
-        edge.roughness.contents = 0.38
-        edge.lightingModel = .physicallyBased
+        let edge = mat(NSColor(red: 0.72, green: 0.76, blue: 0.82, alpha: 1), glow: 0.22)
         let t: CGFloat = 0.012
         let bars: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [
             (w + t * 2, t, 0, h / 2 + t / 2),
@@ -235,34 +239,32 @@ final class HologramController: NSObject, ObservableObject {
             n.position = SCNVector3(b.2, b.3, 0)
             room.addChildNode(n)
         }
+
+        let plinth = SCNNode(geometry: SCNCylinder(radius: 0.09, height: 0.028))
+        plinth.geometry?.firstMaterial = mat(NSColor(red: 0.78, green: 0.82, blue: 0.86, alpha: 1), glow: 0.2)
+        plinth.position = SCNVector3(0, -h / 2 + 0.016, 0.0)
+        plinth.castsShadow = true
+        room.addChildNode(plinth)
     }
 
+    /// Window frames on the room walls — not a lattice through the model.
     private func volumeGrid(w: CGFloat, h: CGFloat, d: CGFloat) -> SCNNode {
         let g = SCNNode()
         var verts: [SCNVector3] = []
-        let nx = 8, ny = 5, nz = 9
         let x0 = -w / 2, y0 = -h / 2
-        let z0: CGFloat = 0.04, z1 = -d * 0.92
-        for iz in 0...nz {
-            let z = z0 + (z1 - z0) * CGFloat(iz) / CGFloat(nz)
-            for ix in 0...nx {
-                let x = x0 + w * CGFloat(ix) / CGFloat(nx)
-                verts.append(SCNVector3(x, y0, z))
-                verts.append(SCNVector3(x, y0 + h, z))
-            }
-            for iy in 0...ny {
-                let y = y0 + h * CGFloat(iy) / CGFloat(ny)
-                verts.append(SCNVector3(x0, y, z))
-                verts.append(SCNVector3(x0 + w, y, z))
-            }
-        }
-        for ix in 0...nx {
-            let x = x0 + w * CGFloat(ix) / CGFloat(nx)
-            for iy in 0...ny {
-                let y = y0 + h * CGFloat(iy) / CGFloat(ny)
-                verts.append(SCNVector3(x, y, z0))
-                verts.append(SCNVector3(x, y, z1))
-            }
+        let z0: CGFloat = 0.02
+        let z1 = -d * 0.88
+        let frames = 4
+        for iz in 0...frames {
+            let z = z0 + (z1 - z0) * CGFloat(iz) / CGFloat(frames)
+            verts.append(SCNVector3(x0, y0, z))
+            verts.append(SCNVector3(x0 + w, y0, z))
+            verts.append(SCNVector3(x0 + w, y0, z))
+            verts.append(SCNVector3(x0 + w, y0 + h, z))
+            verts.append(SCNVector3(x0 + w, y0 + h, z))
+            verts.append(SCNVector3(x0, y0 + h, z))
+            verts.append(SCNVector3(x0, y0 + h, z))
+            verts.append(SCNVector3(x0, y0, z))
         }
         let src = SCNGeometrySource(vertices: verts)
         var idx: [UInt32] = []
@@ -279,49 +281,33 @@ final class HologramController: NSObject, ObservableObject {
         )
         let geo = SCNGeometry(sources: [src], elements: [element])
         let mat = SCNMaterial()
-        mat.diffuse.contents = NSColor(red: 0.24, green: 0.27, blue: 0.31, alpha: 1)
-        mat.emission.contents = NSColor(red: 0.18, green: 0.22, blue: 0.25, alpha: 1)
         mat.lightingModel = .constant
+        mat.diffuse.contents = NSColor(red: 0.38, green: 0.44, blue: 0.50, alpha: 1)
+        mat.emission.contents = NSColor(red: 0.12, green: 0.16, blue: 0.19, alpha: 1)
+        mat.writesToDepthBuffer = true
+        mat.readsFromDepthBuffer = true
         geo.firstMaterial = mat
         g.addChildNode(SCNNode(geometry: geo))
-
-        let floor = SCNNode(geometry: SCNGeometry.lines(
-            from: gridFloor(size: min(w, d) * 0.92, n: 12)
-        ))
-        floor.geometry?.firstMaterial = mat
-        floor.position = SCNVector3(0, -h / 2 + 0.001, -d * 0.42)
-        g.addChildNode(floor)
         return g
     }
 
-    private func gridFloor(size: CGFloat, n: Int) -> [SCNVector3] {
-        var v: [SCNVector3] = []
-        let h = size / 2
-        for i in 0...n {
-            let t = -h + size * CGFloat(i) / CGFloat(n)
-            v.append(SCNVector3(t, 0, -h))
-            v.append(SCNVector3(t, 0, h))
-            v.append(SCNVector3(-h, 0, t))
-            v.append(SCNVector3(h, 0, t))
-        }
-        return v
-    }
-
-    private func metal(_ color: NSColor, roughness: CGFloat = 0.28, metalness: CGFloat = 0.92) -> SCNMaterial {
+    /// Phong + emission so the mesh stays visible even without IBL.
+    private func mat(_ color: NSColor, glow: CGFloat = 0.38, phong: Bool = true) -> SCNMaterial {
         let m = SCNMaterial()
-        m.lightingModel = .physicallyBased
+        m.lightingModel = phong ? .phong : .constant
         m.diffuse.contents = color
-        m.metalness.contents = metalness
-        m.roughness.contents = roughness
+        m.ambient.contents = color
+        m.specular.contents = NSColor(white: 0.85, alpha: 1)
+        m.emission.contents = color.blended(withFraction: 1 - glow, of: .black) ?? color
+        m.shininess = 28
+        m.locksAmbientWithDiffuse = true
+        m.writesToDepthBuffer = true
+        m.readsFromDepthBuffer = true
         return m
     }
 
-    private func clay(_ color: NSColor) -> SCNMaterial {
-        metal(color, roughness: 0.45, metalness: 0.08)
-    }
-
-    private func node(_ geo: SCNGeometry, _ mat: SCNMaterial, at p: SCNVector3 = SCNVector3Zero) -> SCNNode {
-        geo.firstMaterial = mat
+    private func node(_ geo: SCNGeometry, _ material: SCNMaterial, at p: SCNVector3 = SCNVector3Zero) -> SCNNode {
+        geo.firstMaterial = material
         let n = SCNNode(geometry: geo)
         n.position = p
         n.castsShadow = true
@@ -330,129 +316,107 @@ final class HologramController: NSObject, ObservableObject {
 
     private func buildMug() -> SCNNode {
         let root = SCNNode()
-        let cup = clay(NSColor(red: 0.937, green: 0.910, blue: 0.863, alpha: 1))
-        let drink = metal(NSColor(red: 0.24, green: 0.14, blue: 0.09, alpha: 1), roughness: 0.2, metalness: 0.05)
-        let band = metal(NSColor(red: 0.369, green: 0.918, blue: 0.831, alpha: 1), roughness: 0.3, metalness: 0.35)
+        let cup = mat(NSColor(red: 0.96, green: 0.93, blue: 0.86, alpha: 1), glow: 0.48)
+        let drink = mat(NSColor(red: 0.32, green: 0.18, blue: 0.10, alpha: 1), glow: 0.22)
+        let band = mat(NSColor(red: 0.37, green: 0.92, blue: 0.83, alpha: 1), glow: 0.7)
 
-        root.addChildNode(node(SCNCylinder(radius: 0.055, height: 0.1), cup))
-        let rim = node(SCNTorus(ringRadius: 0.053, pipeRadius: 0.006), cup, at: SCNVector3(0, 0.05, 0))
+        root.addChildNode(node(SCNCylinder(radius: 0.07, height: 0.13), cup))
+        let rim = node(SCNTorus(ringRadius: 0.068, pipeRadius: 0.008), cup, at: SCNVector3(0, 0.065, 0))
         rim.eulerAngles.x = .pi / 2
         root.addChildNode(rim)
-        let liquid = node(SCNCylinder(radius: 0.046, height: 0.004), drink, at: SCNVector3(0, 0.038, 0))
-        root.addChildNode(liquid)
-        let handle = node(SCNTorus(ringRadius: 0.032, pipeRadius: 0.009), cup, at: SCNVector3(0.062, 0.004, 0))
+        root.addChildNode(node(SCNCylinder(radius: 0.058, height: 0.006), drink, at: SCNVector3(0, 0.048, 0)))
+        let handle = node(SCNTorus(ringRadius: 0.042, pipeRadius: 0.012), cup, at: SCNVector3(0.082, 0.008, 0))
         handle.eulerAngles.y = .pi / 2
-        handle.eulerAngles.z = 0.45
+        handle.eulerAngles.z = 0.4
         root.addChildNode(handle)
-        let stripe = node(SCNTorus(ringRadius: 0.054, pipeRadius: 0.0045), band, at: SCNVector3(0, -0.008, 0))
+        let stripe = node(SCNTorus(ringRadius: 0.071, pipeRadius: 0.006), band, at: SCNVector3(0, -0.01, 0))
         stripe.eulerAngles.x = .pi / 2
         root.addChildNode(stripe)
-        root.addChildNode(node(SCNCylinder(radius: 0.041, height: 0.01), cup, at: SCNVector3(0, -0.055, 0)))
-        root.position = SCNVector3(0, 0.01, -0.06)
+        root.addChildNode(node(SCNCylinder(radius: 0.052, height: 0.014), cup, at: SCNVector3(0, -0.07, 0)))
+        root.position = SCNVector3(0, 0.03, 0.02)
         return root
     }
 
     private func buildBust() -> SCNNode {
         let root = SCNNode()
-        let stone = clay(NSColor(red: 0.85, green: 0.827, blue: 0.78, alpha: 1))
-        let dark = clay(NSColor(red: 0.16, green: 0.18, blue: 0.21, alpha: 1))
-        let hair = clay(NSColor(red: 0.604, green: 0.565, blue: 0.518, alpha: 1))
-        let live = metal(NSColor(red: 0.369, green: 0.918, blue: 0.831, alpha: 1), roughness: 0.35, metalness: 0.2)
+        let stone = mat(NSColor(red: 0.91, green: 0.88, blue: 0.80, alpha: 1), glow: 0.46)
+        let dark = mat(NSColor(red: 0.22, green: 0.24, blue: 0.28, alpha: 1), glow: 0.18)
+        let hair = mat(NSColor(red: 0.58, green: 0.52, blue: 0.45, alpha: 1), glow: 0.28)
+        let live = mat(NSColor(red: 0.37, green: 0.92, blue: 0.83, alpha: 1), glow: 0.75)
 
-        let cranium = node(SCNSphere(radius: 0.055), stone, at: SCNVector3(0, 0.118, 0))
-        cranium.scale = SCNVector3(0.95, 1.05, 0.92)
+        let cranium = node(SCNSphere(radius: 0.078), stone, at: SCNVector3(0, 0.155, 0))
+        cranium.scale = SCNVector3(0.95, 1.08, 0.92)
         root.addChildNode(cranium)
-        let jaw = node(SCNSphere(radius: 0.042), stone, at: SCNVector3(0, 0.078, 0.008))
+        let jaw = node(SCNSphere(radius: 0.058), stone, at: SCNVector3(0, 0.1, 0.012))
         jaw.scale = SCNVector3(0.9, 0.78, 0.95)
         root.addChildNode(jaw)
-        let nose = node(SCNCone(topRadius: 0, bottomRadius: 0.011, height: 0.03), stone, at: SCNVector3(0, 0.108, 0.052))
+        let nose = node(SCNCone(topRadius: 0, bottomRadius: 0.016, height: 0.042), stone, at: SCNVector3(0, 0.142, 0.072))
         nose.eulerAngles.x = .pi / 2
         root.addChildNode(nose)
-        root.addChildNode(node(SCNBox(width: 0.055, height: 0.008, length: 0.018, chamferRadius: 0), stone, at: SCNVector3(0, 0.128, 0.038)))
+        root.addChildNode(node(SCNBox(width: 0.078, height: 0.012, length: 0.024, chamferRadius: 0), stone, at: SCNVector3(0, 0.172, 0.052)))
         for sx in [-1.0, 1.0] {
-            let socket = node(SCNSphere(radius: 0.012), dark, at: SCNVector3(sx * 0.02, 0.116, 0.046))
+            let socket = node(SCNSphere(radius: 0.016), dark, at: SCNVector3(sx * 0.028, 0.154, 0.064))
             socket.scale = SCNVector3(1, 0.7, 0.45)
             root.addChildNode(socket)
-            root.addChildNode(node(SCNSphere(radius: 0.006), live, at: SCNVector3(sx * 0.02, 0.116, 0.052)))
-            let ear = node(SCNSphere(radius: 0.016), stone, at: SCNVector3(sx * 0.056, 0.11, -0.002))
+            root.addChildNode(node(SCNSphere(radius: 0.008), live, at: SCNVector3(sx * 0.028, 0.154, 0.072)))
+            let ear = node(SCNSphere(radius: 0.022), stone, at: SCNVector3(sx * 0.078, 0.146, -0.004))
             ear.scale = SCNVector3(0.35, 1, 0.7)
             root.addChildNode(ear)
         }
-        root.addChildNode(node(SCNBox(width: 0.022, height: 0.004, length: 0.008, chamferRadius: 0), dark, at: SCNVector3(0, 0.086, 0.044)))
-        let hairCap = node(SCNSphere(radius: 0.058), hair, at: SCNVector3(0, 0.128, -0.004))
+        root.addChildNode(node(SCNBox(width: 0.03, height: 0.006, length: 0.01, chamferRadius: 0), dark, at: SCNVector3(0, 0.112, 0.06)))
+        let hairCap = node(SCNSphere(radius: 0.082), hair, at: SCNVector3(0, 0.168, -0.006))
         hairCap.eulerAngles.x = -0.15
         root.addChildNode(hairCap)
-        root.addChildNode(node(SCNCylinder(radius: 0.023, height: 0.05), stone, at: SCNVector3(0, 0.038, 0)))
-        root.addChildNode(node(SCNBox(width: 0.16, height: 0.05, length: 0.07, chamferRadius: 0.01), stone, at: SCNVector3(0, 0.005, 0)))
-        root.addChildNode(node(SCNCylinder(radius: 0.044, height: 0.02), stone, at: SCNVector3(0, 0.022, 0)))
+        root.addChildNode(node(SCNCylinder(radius: 0.032, height: 0.07), stone, at: SCNVector3(0, 0.048, 0)))
+        root.addChildNode(node(SCNBox(width: 0.2, height: 0.06, length: 0.09, chamferRadius: 0.01), stone, at: SCNVector3(0, 0, 0)))
+        root.addChildNode(node(SCNCylinder(radius: 0.058, height: 0.028), stone, at: SCNVector3(0, 0.028, 0)))
         root.addChildNode(node(
-            SCNBox(width: 0.12, height: 0.024, length: 0.08, chamferRadius: 0),
-            metal(NSColor(red: 0.773, green: 0.800, blue: 0.839, alpha: 1), roughness: 0.4),
-            at: SCNVector3(0, -0.03, 0)
+            SCNBox(width: 0.16, height: 0.03, length: 0.1, chamferRadius: 0),
+            mat(NSColor(red: 0.78, green: 0.82, blue: 0.86, alpha: 1), glow: 0.28),
+            at: SCNVector3(0, -0.042, 0)
         ))
-        root.position = SCNVector3(0, -0.02, -0.055)
+        root.position = SCNVector3(0, 0.01, 0.02)
         return root
     }
 
     private func buildCar() -> SCNNode {
         let root = SCNNode()
-        let paint = metal(NSColor(red: 0.773, green: 0.800, blue: 0.839, alpha: 1), roughness: 0.22, metalness: 0.7)
-        let dark = metal(NSColor(red: 0.10, green: 0.11, blue: 0.125, alpha: 1), roughness: 0.7, metalness: 0.15)
-        let glass = metal(NSColor(red: 0.54, green: 0.64, blue: 0.72, alpha: 1), roughness: 0.08, metalness: 0.2)
-        glass.transparency = 0.28
-        let lamp = SCNMaterial()
-        lamp.lightingModel = .physicallyBased
-        lamp.diffuse.contents = NSColor(red: 0.369, green: 0.918, blue: 0.831, alpha: 1)
-        lamp.emission.contents = NSColor(red: 0.369, green: 0.918, blue: 0.831, alpha: 1)
-        let tail = SCNMaterial()
-        tail.lightingModel = .physicallyBased
-        tail.diffuse.contents = NSColor(red: 0.77, green: 0.35, blue: 0.31, alpha: 1)
-        tail.emission.contents = NSColor(red: 0.77, green: 0.35, blue: 0.31, alpha: 1)
-        let hubMat = metal(NSColor(white: 0.82, alpha: 1), roughness: 0.25)
+        let paint = mat(NSColor(red: 0.86, green: 0.89, blue: 0.93, alpha: 1), glow: 0.42)
+        let dark = mat(NSColor(red: 0.16, green: 0.17, blue: 0.19, alpha: 1), glow: 0.16)
+        let glass = mat(NSColor(red: 0.45, green: 0.62, blue: 0.78, alpha: 1), glow: 0.35)
+        let lamp = mat(NSColor(red: 0.37, green: 0.92, blue: 0.83, alpha: 1), glow: 0.9)
+        let tail = mat(NSColor(red: 0.85, green: 0.32, blue: 0.28, alpha: 1), glow: 0.7)
+        let hubMat = mat(NSColor(white: 0.88, alpha: 1), glow: 0.4)
 
-        root.addChildNode(node(SCNBox(width: 0.22, height: 0.045, length: 0.11, chamferRadius: 0.008), paint, at: SCNVector3(0, 0.048, 0)))
-        root.addChildNode(node(SCNBox(width: 0.07, height: 0.02, length: 0.1, chamferRadius: 0.004), paint, at: SCNVector3(0.075, 0.078, 0)))
-        root.addChildNode(node(SCNBox(width: 0.1, height: 0.055, length: 0.1, chamferRadius: 0.006), glass, at: SCNVector3(-0.02, 0.098, 0)))
-        root.addChildNode(node(SCNBox(width: 0.09, height: 0.012, length: 0.1, chamferRadius: 0.004), paint, at: SCNVector3(-0.025, 0.13, 0)))
-        root.addChildNode(node(SCNBox(width: 0.02, height: 0.025, length: 0.12, chamferRadius: 0), dark, at: SCNVector3(0.12, 0.04, 0)))
-        root.addChildNode(node(SCNBox(width: 0.016, height: 0.022, length: 0.12, chamferRadius: 0), dark, at: SCNVector3(-0.118, 0.038, 0)))
-        root.addChildNode(node(SCNBox(width: 0.008, height: 0.016, length: 0.05, chamferRadius: 0), dark, at: SCNVector3(0.122, 0.058, 0)))
+        root.addChildNode(node(SCNBox(width: 0.32, height: 0.062, length: 0.16, chamferRadius: 0.01), paint, at: SCNVector3(0, 0.07, 0)))
+        root.addChildNode(node(SCNBox(width: 0.1, height: 0.028, length: 0.15, chamferRadius: 0.006), paint, at: SCNVector3(0.11, 0.11, 0)))
+        root.addChildNode(node(SCNBox(width: 0.14, height: 0.08, length: 0.15, chamferRadius: 0.008), glass, at: SCNVector3(-0.03, 0.14, 0)))
+        root.addChildNode(node(SCNBox(width: 0.13, height: 0.016, length: 0.15, chamferRadius: 0.004), paint, at: SCNVector3(-0.035, 0.184, 0)))
+        root.addChildNode(node(SCNBox(width: 0.028, height: 0.036, length: 0.17, chamferRadius: 0), dark, at: SCNVector3(0.174, 0.058, 0)))
+        root.addChildNode(node(SCNBox(width: 0.022, height: 0.032, length: 0.17, chamferRadius: 0), dark, at: SCNVector3(-0.17, 0.055, 0)))
+        root.addChildNode(node(SCNBox(width: 0.01, height: 0.022, length: 0.07, chamferRadius: 0), dark, at: SCNVector3(0.176, 0.082, 0)))
         for sz in [-1.0, 1.0] {
-            let light = node(SCNCylinder(radius: 0.012, height: 0.01), lamp, at: SCNVector3(0.122, 0.06, sz * 0.038))
+            let light = node(SCNCylinder(radius: 0.016, height: 0.014), lamp, at: SCNVector3(0.176, 0.086, sz * 0.052))
             light.eulerAngles.z = .pi / 2
             root.addChildNode(light)
-            root.addChildNode(node(SCNBox(width: 0.008, height: 0.012, length: 0.022, chamferRadius: 0), tail, at: SCNVector3(-0.126, 0.055, sz * 0.04)))
+            root.addChildNode(node(SCNBox(width: 0.01, height: 0.016, length: 0.032, chamferRadius: 0), tail, at: SCNVector3(-0.182, 0.078, sz * 0.055)))
         }
-        for pair in [(0.07, 0.06), (0.07, -0.06), (-0.07, 0.06), (-0.07, -0.06)] {
-            let wheel = node(SCNCylinder(radius: 0.028, height: 0.022), dark, at: SCNVector3(pair.0, 0.028, pair.1))
+        for pair in [(0.1, 0.085), (0.1, -0.085), (-0.1, 0.085), (-0.1, -0.085)] {
+            let wheel = node(SCNCylinder(radius: 0.038, height: 0.03), dark, at: SCNVector3(pair.0, 0.038, pair.1))
             wheel.eulerAngles.z = .pi / 2
             root.addChildNode(wheel)
-            let hub = node(SCNCylinder(radius: 0.012, height: 0.024), hubMat, at: SCNVector3(pair.0, 0.028, pair.1))
+            let hub = node(SCNCylinder(radius: 0.016, height: 0.032), hubMat, at: SCNVector3(pair.0, 0.038, pair.1))
             hub.eulerAngles.z = .pi / 2
             root.addChildNode(hub)
         }
         root.addChildNode(node(
-            SCNBox(width: 0.2, height: 0.006, length: 0.012, chamferRadius: 0),
-            metal(NSColor(red: 0.369, green: 0.918, blue: 0.831, alpha: 1), roughness: 0.3, metalness: 0.3),
-            at: SCNVector3(0, 0.072, 0.056)
+            SCNBox(width: 0.28, height: 0.008, length: 0.016, chamferRadius: 0),
+            mat(NSColor(red: 0.37, green: 0.92, blue: 0.83, alpha: 1), glow: 0.7),
+            at: SCNVector3(0, 0.102, 0.082)
         ))
-        root.position = SCNVector3(0, -0.03, -0.05)
+        root.position = SCNVector3(0, -0.01, 0.02)
         root.eulerAngles.y = -0.55
         return root
-    }
-}
-
-private extension SCNGeometry {
-    static func lines(from verts: [SCNVector3]) -> SCNGeometry {
-        let src = SCNGeometrySource(vertices: verts)
-        var idx: [UInt32] = []
-        for i in stride(from: 0, to: verts.count, by: 2) {
-            idx.append(UInt32(i))
-            idx.append(UInt32(i + 1))
-        }
-        let data = idx.withUnsafeBufferPointer { Data(buffer: $0) }
-        let el = SCNGeometryElement(data: data, primitiveType: .line, primitiveCount: verts.count / 2, bytesPerIndex: 4)
-        return SCNGeometry(sources: [src], elements: [el])
     }
 }
 

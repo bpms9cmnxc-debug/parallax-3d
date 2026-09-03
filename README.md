@@ -24,7 +24,7 @@ macOS 14–27, Apple Silicon.
 
 ## Was du siehst
 
-- Erkennbare 3-D-Objekte in einem räumlichen **Gitter**. Von der Seite sieht eine Tasse, Büste oder ein Auto anders aus als von vorn.
+- Erkennbare, selbstleuchtende 3-D-Objekte (Tasse, Büste, Auto) vor einem dünnen Fensterrahmen — nicht hinter einem Drahtkäfig.
 - Objekte vor der Scheibe (z > 0) treten heraus, der Raum dahinter weicht zurück.
 - Live-Kamera mit Iris-Lock und Blickwinkel in Metern (X/Y/Z). FaceTime-Spiegelung: L bleibt visuell links, Blick nach rechts schaut von rechts um das Modell.
 - Modelle: Tasse, Büste, Auto, plus Import.
