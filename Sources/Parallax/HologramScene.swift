@@ -55,7 +55,7 @@ final class HologramController: NSObject, ObservableObject {
         stage.simdPosition = SIMD3.zero
         addLights()
         rebuildRoom()
-        applyModel("mug")
+        applyModel("diorama")
     }
 
     func resize(widthMeters: Float, heightMeters: Float) {
@@ -105,10 +105,12 @@ final class HologramController: NSObject, ObservableObject {
             model = buildBust()
         case "car":
             model = buildCar()
+        case "mug":
+            model = buildMug()
         case "import":
             model = imported ?? SCNNode()
         default:
-            model = buildMug()
+            model = buildDiorama()
         }
         if model.parent !== stage {
             model.removeFromParentNode()
@@ -119,7 +121,7 @@ final class HologramController: NSObject, ObservableObject {
 
     private func applyStageTransform() {
         stage.simdPosition = SIMD3.zero
-        // Uniform XY, extra Z so you see the sides — centroid stays on the glass.
+        stage.simdEulerAngles = SIMD3.zero
         stage.simdScale = SIMD3(modelScale, modelScale, modelScale * hologramDepth)
     }
 
@@ -172,8 +174,6 @@ final class HologramController: NSObject, ObservableObject {
         camera.projectionTransform = SCNMatrix4(OffAxis.projectionMatrix(
             left: f.left, right: f.right, top: f.top, bottom: f.bottom, near: f.near, far: f.far
         ))
-        let look = OffAxis.lookAround(eye: e)
-        stage.simdEulerAngles = SIMD3(look.pitch, look.yaw, 0)
     }
 
     private func addLights() {
@@ -471,6 +471,45 @@ final class HologramController: NSObject, ObservableObject {
         ))
         root.position = SCNVector3(0, -0.01, 0)
         root.eulerAngles.y = -0.35
+        return root
+    }
+
+    /// Three depth layers: bottle pops out, mug in the glass, books recede.
+    /// Relative parallax is what reads as 3-D on a 2-D screen.
+    private func buildDiorama() -> SCNNode {
+        let root = SCNNode()
+        let wood = mat(NSColor(red: 0.45, green: 0.33, blue: 0.22, alpha: 1), glow: 0.28)
+        let lightSq = mat(NSColor(red: 0.88, green: 0.86, blue: 0.80, alpha: 1), glow: 0.22)
+        let darkSq = mat(NSColor(red: 0.16, green: 0.15, blue: 0.14, alpha: 1), glow: 0.12)
+        let teal = mat(NSColor(red: 0.28, green: 0.62, blue: 0.58, alpha: 1), glow: 0.4)
+        let red = mat(NSColor(red: 0.72, green: 0.28, blue: 0.24, alpha: 1), glow: 0.38)
+        let glass = mat(NSColor(red: 0.55, green: 0.82, blue: 0.76, alpha: 1), glow: 0.45)
+
+        root.addChildNode(node(
+            SCNBox(width: 0.44, height: 0.018, length: 0.38, chamferRadius: 0.004),
+            wood,
+            at: SCNVector3(0, -0.092, -0.05)
+        ))
+        let tile: CGFloat = 0.048
+        for ix in -4...4 {
+            for iz in -3...4 {
+                let even = ((ix + iz) & 1) == 0
+                root.addChildNode(node(
+                    SCNBox(width: tile * 0.94, height: 0.003, length: tile * 0.94, chamferRadius: 0),
+                    even ? lightSq : darkSq,
+                    at: SCNVector3(CGFloat(ix) * tile, -0.082, CGFloat(iz) * tile - 0.04)
+                ))
+            }
+        }
+        let mug = buildMug()
+        mug.scale = SCNVector3(0.78, 0.78, 0.78)
+        mug.position = SCNVector3(0.01, -0.012, 0)
+        root.addChildNode(mug)
+        root.addChildNode(node(SCNBox(width: 0.12, height: 0.17, length: 0.032, chamferRadius: 0.003), teal, at: SCNVector3(-0.13, -0.005, -0.16)))
+        root.addChildNode(node(SCNBox(width: 0.11, height: 0.15, length: 0.03, chamferRadius: 0.003), red, at: SCNVector3(-0.14, -0.016, -0.20)))
+        root.addChildNode(node(SCNCylinder(radius: 0.024, height: 0.12), glass, at: SCNVector3(0.14, -0.02, 0.08)))
+        root.addChildNode(node(SCNSphere(radius: 0.026), glass, at: SCNVector3(0.14, 0.042, 0.08)))
+        root.addChildNode(node(SCNCylinder(radius: 0.01, height: 0.032), glass, at: SCNVector3(0.14, 0.078, 0.08)))
         return root
     }
 }

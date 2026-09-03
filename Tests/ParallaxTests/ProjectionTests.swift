@@ -139,6 +139,16 @@ final class ProjectionTests: XCTestCase {
         XCTAssertEqual(clip.y / clip.w, 0, accuracy: 0.03)
     }
 
+    func testLidarPacketRoundTrip() {
+        let p = TrackerPacket(x: 0.11, y: -0.04, z: 0.61, ipd: 0.063, quality: 0.9, source: "lidar")
+        let data = try! JSONEncoder().encode(p)
+        let q = try! JSONDecoder().decode(TrackerPacket.self, from: data)
+        XCTAssertEqual(q.z, 0.61, accuracy: 0.001)
+        XCTAssertEqual(q.source, "lidar")
+        let w = OffAxis.lidarToScreen(q, calibration: Calibration(), origin: SIMD3(0.11, -0.04, 0))
+        XCTAssertEqual(w.x, 0, accuracy: 0.001)
+    }
+
     func testLookAroundTurnsTheObjectNotTheScreen() {
         let side = OffAxis.lookAround(eye: SIMD3(0.18, 0.0, 0.58))
         XCTAssertGreaterThan(side.yaw, 0.45)

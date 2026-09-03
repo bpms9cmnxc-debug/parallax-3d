@@ -49,12 +49,11 @@ Parallax 3D
 1. Parallax.app nach Programme ziehen
 2. Beim ersten Start: Rechtsklick → Öffnen (Gatekeeper)
 3. Kamera erlauben
-4. Kopf bewegen — das Modell bleibt in der Scheibe, du siehst die Seite
-5. Unten links: Live-Kamera mit Iris-Markern L / R
+4. Oben rechts: iPhone LiDAR — iPhone-App aus dem Release-Zip
+5. Diorama: Flasche gleitet anders als die Bücher hinter der Tasse
 
 macOS 14 bis macOS 27. Apple Silicon.
-Kein Hand-Tracking. Nur Eye-Tracking über die FaceTime-Kamera.
-Native Swift/SceneKit. Kein HTML.
+Kein Hand-Tracking. Native Swift/SceneKit. Kein HTML.
 Helios wurde nicht verändert.
 TXT
 ln -s /Applications "$STAGE/Applications"

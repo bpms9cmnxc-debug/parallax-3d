@@ -6,9 +6,10 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     private let models = [
-        ("mug", "Tasse", "Henkel rechts — von der Seite ein anderes Profil"),
-        ("bust", "Büste", "Kopf mit Nase und Augen. Blick von der Seite zeigt das Ohr"),
-        ("car", "Auto", "Karosserie, Räder, Kanzel. Bug ragt nach vorn"),
+        ("diorama", "Diorama", "Flasche vorn, Tasse in der Scheibe, Bücher hinten — echtes Tiefen-Parallax"),
+        ("mug", "Tasse", "Hohl mit Henkel und Löffel"),
+        ("bust", "Büste", "Kopf mit Nase und Ohren"),
+        ("car", "Auto", "Karosserie, Räder, Spiegel"),
         ("import", "Import", "OBJ, STL, DAE, USD, USDZ, SCN, PLY"),
     ]
 
@@ -40,6 +41,9 @@ struct ContentView: View {
         .sheet(isPresented: $model.showCalibrate) {
             CalibrationWizard(model: model)
         }
+        .sheet(isPresented: $model.showIPhone) {
+            IPhoneSheet(model: model)
+        }
     }
 
     private var gazeReticle: some View {
@@ -69,13 +73,15 @@ struct ContentView: View {
                     .font(.system(size: 28, weight: .semibold))
                     .tracking(-0.6)
                     .foregroundStyle(ParallaxTheme.fg)
-                Text("Holografisches 3-D auf dem 2-D-Bildschirm. Die Kamera liest deine Augen — das Modell bleibt, du schaust um es herum. Kein Hand-Tracking.")
+                Text("Holografisches 3-D. Diorama mit echter Tiefe. Oben rechts: iPhone LiDAR. Kein Hand-Tracking.")
                     .font(.system(size: 13))
                     .foregroundStyle(ParallaxTheme.muted)
                     .frame(maxWidth: 320, alignment: .leading)
             }
             Spacer()
             HStack(spacing: 8) {
+                Button("iPhone LiDAR") { model.showIPhone = true }
+                    .buttonStyle(PrimaryButtonStyle(filled: model.iphone.connected))
                 Button("Kalibrieren") { model.showCalibrate = true }
                     .buttonStyle(PrimaryButtonStyle(filled: false))
                 Circle()
@@ -132,6 +138,8 @@ struct ContentView: View {
             Text(model.iphone.status)
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(model.iphone.connected ? ParallaxTheme.live : ParallaxTheme.muted)
+            Button("iPhone LiDAR + Kamera") { model.showIPhone = true }
+                .buttonStyle(PrimaryButtonStyle(filled: model.iphone.connected))
 
             HStack(spacing: 8) {
                 Button(model.cameraActive ? "Kamera stoppen" : "Kamera starten") {

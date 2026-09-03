@@ -4,6 +4,7 @@ import Combine
 import Foundation
 import ParallaxCore
 import QuartzCore
+import simd
 import SwiftUI
 
 final class AppModel: ObservableObject {
@@ -13,7 +14,7 @@ final class AppModel: ObservableObject {
     private let tracker = EyeTracker()
 
     @Published var eyes: TrackedEyes?
-    @Published var modelId = "mug"
+    @Published var modelId = "diorama"
     @Published var modelScale: Float = 1
     @Published var importName: String?
     @Published var importError: String?
@@ -24,6 +25,9 @@ final class AppModel: ObservableObject {
     @Published var hologramDepth: Float = 1.4
     @Published var calibration = Calibration.load()
     @Published var showCalibrate = false
+    @Published var showIPhone = false
+    @Published var cameras: [(id: String, name: String)] = []
+    @Published var cameraID = ""
     @Published var mode = "demo"
     @Published var eye = EyeWorld(x: 0, y: 0.02, z: OffAxis.defaultZ)
     @Published var fps = 0
@@ -38,6 +42,7 @@ final class AppModel: ObservableObject {
     private var running = false
     private var wantsCamera = false
     private var smoothed = EyeWorld(x: 0, y: 0.02, z: OffAxis.defaultZ)
+    private var iphoneOrigin = SIMD3<Float>(repeating: 0)
 
     var live: Bool { wantsCamera && camera.isRunning && (eyes?.tracking ?? false) }
     var searching: Bool { wantsCamera && !(eyes?.tracking ?? false) }
@@ -53,9 +58,15 @@ final class AppModel: ObservableObject {
         hologram.setEye(smoothed)
         hologram.setDepth(hologramDepth)
         iphone.start()
+        refreshCameras()
         camera.objectWillChange
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.cameras = self.camera.devices
+                if self.cameraID.isEmpty { self.cameraID = self.camera.devices.first?.id ?? "" }
+                self.objectWillChange.send()
+            }
             .store(in: &bag)
         camera.onBuffer = { [weak self] pb in
             guard let self else { return }
@@ -185,6 +196,22 @@ final class AppModel: ObservableObject {
         calibration.save()
     }
 
+    func refreshCameras() {
+        camera.refreshDevices()
+        cameras = camera.devices
+        if cameraID.isEmpty, let first = cameras.first { cameraID = first.id }
+    }
+
+    func setCamera(_ id: String) {
+        cameraID = id
+        camera.selectDevice(id)
+    }
+
+    func zeroIPhone() {
+        guard let p = iphone.latest else { return }
+        iphoneOrigin = SIMD3(p.x, p.y, 0)
+    }
+
     func applyCalibration(_ cal: Calibration) {
         var c = cal
         c.completed = true
@@ -205,7 +232,7 @@ final class AppModel: ObservableObject {
     private func step(_ dt: Float) {
         var target = smoothed
         if let pkt = iphone.latest, iphone.connected, pkt.quality > 0.25 {
-            var w = OffAxis.lidarToScreen(pkt, calibration: calibration)
+            var w = OffAxis.lidarToScreen(pkt, calibration: calibration, origin: iphoneOrigin)
             tooClose = pkt.z < OffAxis.minZ
             if !autoDistance { w.z = distanceMeters }
             target = w

@@ -157,10 +157,14 @@ public enum OffAxis {
         return EyeWorld(x: x, y: y, z: z)
     }
 
-    public static func lidarToScreen(_ packet: TrackerPacket, calibration: Calibration) -> EyeWorld {
+    public static func lidarToScreen(
+        _ packet: TrackerPacket,
+        calibration: Calibration,
+        origin: SIMD3<Float> = .zero
+    ) -> EyeWorld {
         EyeWorld(
-            x: packet.x,
-            y: packet.y + calibration.iphoneOffsetY,
+            x: packet.x - origin.x,
+            y: packet.y - origin.y + calibration.iphoneOffsetY,
             z: simd_clamp(packet.z, minZ, maxZ)
         )
     }

@@ -5,7 +5,13 @@ import QuartzCore
 import simd
 import Vision
 
-/// Rear camera + LiDAR (Pro) or IPD fallback. Sends JSON lines to Parallax on the Mac.
+enum CaptureMode: String, CaseIterable, Identifiable {
+    case lidar = "LiDAR Rückseite"
+    case trueDepth = "TrueDepth Front"
+    var id: String { rawValue }
+}
+
+/// Rear LiDAR (Pro, phone as webcam) or front TrueDepth. JSON lines to the Mac.
 final class TrackerSession: NSObject, ObservableObject, ARSessionDelegate {
     @Published var running = false
     @Published var sending = false
@@ -15,9 +21,12 @@ final class TrackerSession: NSObject, ObservableObject, ARSessionDelegate {
     @Published var z: Float = 0.6
     @Published var quality: Float = 0
     @Published var hasLidar = false
+    @Published var hasTrueDepth = ARFaceTrackingConfiguration.isSupported
+    @Published var mode: CaptureMode = ARFaceTrackingConfiguration.isSupported ? .trueDepth : .lidar
+    @Published var manualHost = ""
 
-    private let ar = ARSession()
-    private let face = VNDetectFaceLandmarksRequest()
+    let ar = ARSession()
+    private let faceReq = VNDetectFaceLandmarksRequest()
     private var conn: NWConnection?
     private var browser: NWBrowser?
     private let encoder = JSONEncoder()
@@ -26,14 +35,13 @@ final class TrackerSession: NSObject, ObservableObject, ARSessionDelegate {
     func start() {
         stop()
         running = true
-        hasLidar = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
-        let cfg = ARWorldTrackingConfiguration()
-        if hasLidar { cfg.frameSemantics.insert(.sceneDepth) }
-        cfg.worldAlignment = .gravity
-        ar.delegate = self
-        ar.run(cfg, options: [.resetTracking, .removeExistingAnchors])
-        browse()
-        status = hasLidar ? "LiDAR an — suche Mac" : "Kein LiDAR — suche Mac"
+        runAR()
+        if manualHost.trimmingCharacters(in: .whitespaces).isEmpty {
+            browse()
+            status = mode == .lidar ? "LiDAR an — suche Mac" : "TrueDepth an — suche Mac"
+        } else {
+            connectHost(manualHost.trimmingCharacters(in: .whitespaces))
+        }
     }
 
     func stop() {
@@ -46,16 +54,34 @@ final class TrackerSession: NSObject, ObservableObject, ARSessionDelegate {
         browser = nil
     }
 
+    private func runAR() {
+        hasLidar = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
+        hasTrueDepth = ARFaceTrackingConfiguration.isSupported
+        if mode == .trueDepth, hasTrueDepth {
+            let cfg = ARFaceTrackingConfiguration()
+            ar.delegate = self
+            ar.run(cfg, options: [.resetTracking, .removeExistingAnchors])
+        } else {
+            let cfg = ARWorldTrackingConfiguration()
+            if hasLidar { cfg.frameSemantics.insert(.sceneDepth) }
+            cfg.worldAlignment = .gravity
+            ar.delegate = self
+            ar.run(cfg, options: [.resetTracking, .removeExistingAnchors])
+        }
+    }
+
     private func browse() {
-        let b = NWBrowser(for: .bonjour(type: "_parallax._tcp", domain: "local."), using: .tcp)
+        let params = NWParameters.tcp
+        params.includePeerToPeer = true
+        let b = NWBrowser(for: .bonjour(type: TrackerPacket.bonjourType, domain: "local."), using: params)
         b.stateUpdateHandler = { [weak self] state in
-            if case .failed = state {
-                DispatchQueue.main.async { self?.status = "Netzwerkfehler" }
+            if case .failed(let err) = state {
+                DispatchQueue.main.async { self?.status = "Netzwerk: \(err.localizedDescription)" }
             }
         }
         b.browseResultsChangedHandler = { [weak self] results, _ in
             guard let self, self.conn == nil else { return }
-            if let first = results.first, case .service = first.endpoint {
+            if let first = results.first {
                 self.connect(first.endpoint)
             }
         }
@@ -63,15 +89,30 @@ final class TrackerSession: NSObject, ObservableObject, ARSessionDelegate {
         browser = b
     }
 
+    private func connectHost(_ host: String) {
+        let parts = host.split(separator: ":")
+        let h = String(parts.first ?? "")
+        let p = parts.count > 1 ? UInt16(parts[1]) ?? TrackerPacket.port : TrackerPacket.port
+        let endpoint = NWEndpoint.hostPort(host: NWEndpoint.Host(h), port: NWEndpoint.Port(rawValue: p)!)
+        connect(endpoint)
+        status = "Verbinde \(h)…"
+    }
+
     private func connect(_ endpoint: NWEndpoint) {
-        let c = NWConnection(to: endpoint, using: .tcp)
+        let params = NWParameters.tcp
+        params.includePeerToPeer = true
+        let c = NWConnection(to: endpoint, using: params)
         c.stateUpdateHandler = { [weak self] state in
             DispatchQueue.main.async {
                 switch state {
                 case .ready:
                     self?.sending = true
                     self?.status = "Verbunden mit dem Mac"
-                case .failed, .cancelled:
+                case .failed(let err):
+                    self?.sending = false
+                    self?.status = "Getrennt: \(err.localizedDescription)"
+                    self?.conn = nil
+                case .cancelled:
                     self?.sending = false
                     self?.status = "Getrennt"
                     self?.conn = nil
@@ -86,10 +127,28 @@ final class TrackerSession: NSObject, ObservableObject, ARSessionDelegate {
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         guard running else { return }
+        if let face = frame.anchors.compactMap({ $0 as? ARFaceAnchor }).first {
+            emitFace(face, frame: frame)
+            return
+        }
+        emitVision(frame)
+    }
+
+    private func emitFace(_ face: ARFaceAnchor, frame: ARFrame) {
+        let inv = frame.camera.transform.inverse
+        let p = face.transform.columns.3
+        let inCam = inv * SIMD4<Float>(p.x, p.y, p.z, 1)
+        let xM = inCam.x
+        let yM = inCam.y
+        let zM = max(0.25, abs(inCam.z))
+        push(x: xM, y: yM, z: zM, ipd: 0.063, quality: 0.95, source: "truedepth")
+    }
+
+    private func emitVision(_ frame: ARFrame) {
         let buf = frame.capturedImage
         let handler = VNImageRequestHandler(cvPixelBuffer: buf, orientation: .right, options: [:])
-        try? handler.perform([face])
-        guard let f = face.results?.first else {
+        try? handler.perform([faceReq])
+        guard let f = faceReq.results?.first else {
             DispatchQueue.main.async { self.quality = 0 }
             return
         }
@@ -111,23 +170,22 @@ final class TrackerSession: NSObject, ObservableObject, ARSessionDelegate {
         let py = (1 - Float(mid.y)) * imgH
         let xM = (px - cx) * zM / max(fx, 1)
         let yM = -((py - cy) * zM / max(fy, 1))
-        let q: Float = depth == nil ? 0.45 : 0.9
+        let q: Float = depth == nil ? 0.45 : 0.92
+        push(x: xM, y: yM, z: zM, ipd: Float(box.width) * 0.35, quality: q, source: depth == nil ? "iphone" : "lidar")
+    }
+
+    private func push(x: Float, y: Float, z: Float, ipd: Float, quality: Float, source: String) {
         let now = CACurrentMediaTime()
         DispatchQueue.main.async {
-            self.x = xM
-            self.y = yM
-            self.z = zM
-            self.quality = q
+            self.x = x
+            self.y = y
+            self.z = z
+            self.quality = quality
         }
         guard now - lastSend > 0.033, sending else { return }
         lastSend = now
-        let pkt = [
-            "x": xM, "y": yM, "z": zM,
-            "ipd": Float(box.width) * 0.35,
-            "quality": q,
-            "source": depth == nil ? "iphone" : "lidar",
-        ] as [String: Any]
-        guard var line = try? JSONSerialization.data(withJSONObject: pkt) else { return }
+        let pkt = TrackerPacket(x: x, y: y, z: z, ipd: ipd, quality: quality, source: source)
+        guard var line = try? encoder.encode(pkt) else { return }
         line.append(0x0A)
         conn?.send(content: line, completion: .contentProcessed { _ in })
     }

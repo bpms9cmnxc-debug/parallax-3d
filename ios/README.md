@@ -1,24 +1,31 @@
 # Parallax Track (iPhone)
 
-LiDAR + Kamera als Abstandssensor für **Parallax 3D** auf dem Mac.
+LiDAR-Rückkamera **oder** TrueDepth-Frontkamera als Abstandssensor für **Parallax 3D** auf dem Mac.
+
+## Download
+
+Im gleichen Release wie die Mac-DMG: **ParallaxTrack-iOS.zip**
+
+Oder dieses Repo: `ios/ParallaxTrack.xcodeproj` in Xcode öffnen.
 
 ## Gerät
 
-- iPhone **12 Pro / 13 Pro / 14 Pro / 15 Pro / 16 Pro** (LiDAR auf der Rückseite)
-- Ohne LiDAR: Abstand aus der Gesichtsgröße, ungenauer
+- **LiDAR Rückseite:** iPhone 12 Pro / 13 Pro / 14 Pro / 15 Pro / 16 Pro  
+  iPhone **oben auf den Mac, Display von dir weg**, Rückkamera auf dein Gesicht (wie eine Webcam).
+- **TrueDepth Front:** jedes iPhone mit Face ID  
+  Display **zu dir**. Einfacher, Abstand etwas grober als LiDAR.
 
 ## Setup
 
-1. iPhone **oben an den Mac** (Continuity-Halter oder anlehnen), **Rückkamera auf dich**
-2. Mac: Parallax 3D starten, **Kalibrieren** durchlaufen
-3. Dieses Projekt in Xcode öffnen:
-   - File → New → Project → iOS App, Name `Parallax Track`, Bundle `dev.parallax.track`
-   - Dateien aus diesem Ordner ersetzen (`ParallaxTrackApp.swift`, `TrackView.swift`, `TrackerSession.swift`)
-   - Info: Kamera + lokales Netz (Plist in diesem Ordner)
-4. Signing: dein Personal Team, aufs iPhone
-5. App starten — Status **„Verbunden mit dem Mac“**
-6. Kopf bewegen. Telemetrie auf dem Mac zeigt Quelle **LiDAR** und Abstand in cm
+1. Mac: Parallax 3D starten → Button **iPhone LiDAR** (oben rechts). Dort stehen IP und Port.
+2. Xcode: `ParallaxTrack.xcodeproj` öffnen, Signing = dein Personal Team, aufs iPhone.
+3. App starten. Lokalnetz **erlauben**.
+4. Modus wählen (LiDAR oder TrueDepth), **Senden an den Mac**.
+5. Status **„Verbunden mit dem Mac“**. Auf dem Mac: „LiDAR live“ oder „iPhone-Kamera live“.
+6. Einmal **Mitte setzen** (Mac-Dialog), während du gerade sitzt.
 
-Gleiches WLAN (oder USB + Netzwerk-Sharing). Firewall: Parallax darf lokal empfangen.
+Bonjour findet den Mac automatisch. Falls nicht: Mac-IP aus dem Dialog ins Feld auf dem iPhone (z. B. `192.168.1.12`).
+
+Gleiches WLAN oder nah beieinander (AWDL/Peer-to-Peer). Firewall: Parallax darf lokal empfangen.
 
 Kein Hand-Tracking. Helios bleibt unberührt.

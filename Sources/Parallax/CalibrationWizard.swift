@@ -84,7 +84,7 @@ struct CalibrationWizard: View {
         case 3:
             return "Dasselbe rechts: Kopf über der rechten Kante, speichern. Daraus wird die echte Geometrie (links = −halbe Breite)."
         case 4:
-            return "Optional: iPhone 12 Pro oder neuer oben an den Mac, Rückkamera + LiDAR auf dich. App „Parallax Track“ starten (im Repo unter ios/). LiDAR misst den Abstand in Zentimetern — dann fühlt sich Vor- und Zurücklehnen richtig an. Ohne iPhone reicht die Webcam."
+            return "iPhone: Button „iPhone LiDAR“ oben rechts. Parallax Track (Release-Zip) auf dem iPhone. LiDAR-Rückseite wie eine Webcam oben auf den Mac, oder TrueDepth-Front. Ohne iPhone reicht die Webcam."
         default:
             return "Kalibrierung liegt. Das Objekt sitzt in der Scheibe — das Zentrum bleibt, du siehst die Seiten. Volumen macht es dicker zum Umschauen. 3D-Stärke bei 1,0 ist physikalisch."
         }

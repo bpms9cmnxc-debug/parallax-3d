@@ -60,28 +60,34 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VER=$(python3 -c "import re,pathlib; t=pathlib.Path('macos/Info.plist').read_text(); m=re.search(r'CFBundleShortVersionString</key>\s*<string>([^<]+)', t); print(m.group(1) if m else '1.5.0')")
+          VER=$(python3 -c "import re,pathlib; t=pathlib.Path('macos/Info.plist').read_text(); m=re.search(r'CFBundleShortVersionString</key>\s*<string>([^<]+)', t); print(m.group(1) if m else '1.6.0')")
           TAG="v$VER"
           TITLE="Parallax 3D $VER"
           test -f Parallax-3D.dmg
+          zip -r ParallaxTrack-iOS.zip ios -x "*.DS_Store"
           NOTES="$(cat <<'EOF'
           ## Download
 
-          Nur **Parallax-3D.dmg** herunterladen (Disk-Image).
+          1. **Parallax-3D.dmg** — Mac-App (Apple Silicon)
+          2. **ParallaxTrack-iOS.zip** — iPhone LiDAR/TrueDepth (Xcode → iPhone)
 
-          Nicht anfassen: *Source code (zip)* und *Source code (tar.gz)* — das ist Quelltext, nicht die App.
+          Nicht anfassen: *Source code (zip)* / *Source code (tar.gz)*.
 
-          1. Parallax-3D.dmg öffnen (Doppelklick)
-          2. Parallax nach Programme ziehen
-          3. Rechtsklick → Öffnen (Gatekeeper)
-          4. Kamera erlauben
-          5. Kopf bewegen — das Modell bleibt in der Scheibe, du siehst Henkel / Ohr / Seite
-          6. Unten links: Live-Bild mit Iris-Markern **L** / **R** (FaceTime-Spiegelung)
-          7. Größe und Volumen am Schieber. Eigene Modelle: Datei wählen (OBJ, STL, DAE, USD, USDZ, SCN, PLY)
+          ### Mac
+          1. DMG öffnen, App nach Programme
+          2. Rechtsklick → Öffnen
+          3. Kamera erlauben
+          4. Oben rechts **iPhone LiDAR** — dort stehen IP und Anleitung
+          5. Modell **Diorama**: Flasche vorn, Tasse in der Scheibe, Bücher hinten
 
-          Apple Silicon, macOS 14–27. **Kein Hand-Tracking. Kein HTML.** Nur Eye-Tracking.
+          ### iPhone
+          1. ParallaxTrack-iOS.zip entpacken, `ParallaxTrack.xcodeproj` in Xcode
+          2. Signing: Personal Team, aufs Gerät
+          3. LiDAR-Rückseite (Pro, wie Webcam oben auf den Mac) oder TrueDepth-Front
+          4. Lokalnetz erlauben, Senden an den Mac
+          5. Auf dem Mac **Mitte setzen**
 
-          Modelle: Tasse, Büste, Auto. Ad-hoc signiert. Helios wurde nicht verändert und ist nicht Teil dieser App.
+          Apple Silicon, macOS 14–27. **Kein Hand-Tracking. Kein HTML.**
           EOF
           )"
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -89,5 +95,5 @@ jobs:
           else
             gh release create "$TAG" --title "$TITLE" --latest --notes "$NOTES"
           fi
-          gh release upload "$TAG" Parallax-3D.dmg --clobber
+          gh release upload "$TAG" Parallax-3D.dmg ParallaxTrack-iOS.zip --clobber
           gh release view "$TAG"

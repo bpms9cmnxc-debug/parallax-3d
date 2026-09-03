@@ -12,6 +12,7 @@ final class CameraSession: NSObject, ObservableObject {
     @Published var errorMessage: String?
     @Published var preview: NSImage?
     @Published var deviceName = "—"
+    @Published var devices: [(id: String, name: String)] = []
     /// True when the capture connection actually mirrors (FaceTime default).
     private(set) var isMirrored = true
 
@@ -21,7 +22,18 @@ final class CameraSession: NSObject, ObservableObject {
     private let output = AVCaptureVideoDataOutput()
     private let queue = DispatchQueue(label: "parallax.camera", qos: .userInteractive)
     private var lastPreview: CFTimeInterval = 0
+    private var preferredID: String?
     private static let ciContext = CIContext(options: [.useSoftwareRenderer: false])
+
+    func selectDevice(_ id: String) {
+        preferredID = id
+        if isRunning { start() }
+    }
+
+    func refreshDevices() {
+        let list = Self.discovery().map { ($0.uniqueID, $0.localizedName) }
+        DispatchQueue.main.async { self.devices = list }
+    }
 
     func start() {
         DispatchQueue.main.async { self.errorMessage = nil }
@@ -109,18 +121,31 @@ final class CameraSession: NSObject, ObservableObject {
         }
     }
 
-    private func preferredDevice() -> AVCaptureDevice? {
+    private static func discovery() -> [AVCaptureDevice] {
         var types: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera, .continuityCamera, .external]
         if #available(macOS 14.0, *) {
             types.append(.deskViewCamera)
         }
-        let found = AVCaptureDevice.DiscoverySession(
+        return AVCaptureDevice.DiscoverySession(
             deviceTypes: types,
             mediaType: .video,
             position: .unspecified
         ).devices
+    }
+
+    private func preferredDevice() -> AVCaptureDevice? {
+        let found = Self.discovery()
+        DispatchQueue.main.async {
+            self.devices = found.map { ($0.uniqueID, $0.localizedName) }
+        }
+        if let id = preferredID, let match = found.first(where: { $0.uniqueID == id }) {
+            return match
+        }
         if let front = found.first(where: { $0.deviceType == .builtInWideAngleCamera && $0.position == .front }) {
             return front
+        }
+        if let continuity = found.first(where: { $0.deviceType == .continuityCamera }) {
+            return continuity
         }
         return found.first ?? AVCaptureDevice.default(for: .video)
     }
