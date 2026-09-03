@@ -1,4 +1,5 @@
 import ParallaxCore
+import simd
 import XCTest
 
 final class ProjectionTests: XCTestCase {
@@ -53,7 +54,7 @@ final class ProjectionTests: XCTestCase {
         let P = OffAxis.projection(eye: eye, screenW: 0.4, screenH: 0.25)
         // World origin (the mug) in camera space: SceneKit looks −Z.
         let cam = SIMD4<Float>(0, -0.02, -0.55, 1)
-        let clip = P * cam
+        let clip = simd_mul(P, cam)
         XCTAssertGreaterThan(abs(clip.w), 0.05)
         let ndc = SIMD3(clip.x / clip.w, clip.y / clip.w, clip.z / clip.w)
         XCTAssertLessThan(abs(ndc.x), 1)
