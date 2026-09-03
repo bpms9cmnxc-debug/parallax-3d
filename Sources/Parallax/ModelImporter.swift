@@ -99,7 +99,7 @@ enum ModelImporter {
         var errorDescription: String? {
             switch self {
             case .unsupported(let ext):
-                return "Format .\(ext) läuft in der Browser-Demo. Auf dem Mac: OBJ, STL, DAE, USD, USDZ, SCN oder PLY."
+                return "Format .\(ext) auf dem Mac nicht nativ. Bitte OBJ, STL, DAE, USD, USDZ, SCN oder PLY."
             case .empty:
                 return "Die Datei enthält kein 3-D-Mesh."
             }

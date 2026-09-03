@@ -17,7 +17,7 @@ final class AppModel: ObservableObject {
     @Published var modelScale: Float = 1
     @Published var importName: String?
     @Published var importError: String?
-    @Published var sensitivity: Float = 1.4
+    @Published var sensitivity: Float = 1.55
     @Published var autoDistance = true
     @Published var distanceMeters: Float = OffAxis.defaultZ
     @Published var tooClose = false

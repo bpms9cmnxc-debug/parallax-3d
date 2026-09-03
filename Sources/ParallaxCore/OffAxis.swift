@@ -25,8 +25,11 @@ public enum OffAxis {
     public static let near: Float = 0.022
     public static let far: Float = 8
     /// Lateral gain: a modest head move (~15 % of the frame) must already look *around* the object.
-    public static let lateralGain: Float = 1.55
-    public static let verticalGain: Float = 1.12
+    public static let lateralGain: Float = 2.15
+    public static let verticalGain: Float = 1.25
+    /// Extra yaw/pitch of the object. Pure off-axis at a desk is ~10° — not enough to
+    /// see a handle. The centroid stays at the screen; only the facing changes.
+    public static let orbitGain: Float = 2.05
 
     /// Sheared frustum: screen on z = 0, viewer at `eye`. Scene does not rotate.
     public static func frustum(
@@ -72,6 +75,13 @@ public enum OffAxis {
             SIMD4(0, 0, 0.5, 1)
         ))
         return glToMetal * gl
+    }
+
+    public static func lookAround(eye: SIMD3<Float>) -> (pitch: Float, yaw: Float) {
+        let z = max(minZ, eye.z)
+        let yaw = atan2(eye.x, z) * orbitGain
+        let pitch = -atan2(eye.y, z) * orbitGain * 0.55
+        return (min(0.55, max(-0.55, pitch)), min(1.05, max(-1.05, yaw)))
     }
 
     public static func projection(eye: SIMD3<Float>, screenW: Float, screenH: Float) -> simd_float4x4 {

@@ -139,6 +139,14 @@ final class ProjectionTests: XCTestCase {
         XCTAssertEqual(clip.y / clip.w, 0, accuracy: 0.03)
     }
 
+    func testLookAroundTurnsTheObjectNotTheScreen() {
+        let side = OffAxis.lookAround(eye: SIMD3(0.18, 0.0, 0.58))
+        XCTAssertGreaterThan(side.yaw, 0.45)
+        XCTAssertLessThan(abs(side.pitch), 0.05)
+        let center = OffAxis.lookAround(eye: SIMD3(0, 0.02, 0.58))
+        XCTAssertEqual(center.yaw, 0, accuracy: 0.02)
+    }
+
     func testFaceHighInImageLooksFromAbove() {
         let high = OffAxis.faceToWorld(midX: 0.5, midY: 0.25, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1)
         let low = OffAxis.faceToWorld(midX: 0.5, midY: 0.75, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1)
