@@ -255,8 +255,8 @@ final class AppModel: ObservableObject {
             )
             mode = "demo"
         }
-        let kxy = 1 - exp(-14 * dt)
-        let kz = 1 - exp(-5 * dt)
+        let kxy = 1 - exp(-8 * dt)
+        let kz = 1 - exp(-4.5 * dt)
         smoothed = EyeWorld(
             x: smoothed.x + (target.x - smoothed.x) * kxy,
             y: smoothed.y + (target.y - smoothed.y) * kxy,

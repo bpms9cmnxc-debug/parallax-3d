@@ -33,7 +33,7 @@ struct HologramView: NSViewRepresentable {
         let view = SCNView()
         view.scene = controller.scene
         view.backgroundColor = NSColor(red: 0.027, green: 0.031, blue: 0.039, alpha: 1)
-        view.antialiasingMode = .multisampling4X
+        view.antialiasingMode = .multisampling2X
         view.autoenablesDefaultLighting = false
         view.allowsCameraControl = false
         view.rendersContinuously = true

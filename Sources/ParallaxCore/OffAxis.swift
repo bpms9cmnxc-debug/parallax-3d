@@ -42,7 +42,7 @@ public enum OffAxis {
         _ = nearPad
         let z = max(minZ, eye.z)
         let near = OffAxis.near
-        let pad: Float = 1.06
+        let pad: Float = 1.18
         let halfW = screenW * 0.5 * pad
         let halfH = screenH * 0.5 * pad
         let left = (near * (-halfW - eye.x)) / z
