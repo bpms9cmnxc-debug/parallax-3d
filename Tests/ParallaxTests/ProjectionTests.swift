@@ -35,4 +35,11 @@ final class ProjectionTests: XCTestCase {
         XCTAssertEqual(m.columns.2.w, -1, accuracy: 0.0001)
         XCTAssertEqual(m.columns.3.w, 0, accuracy: 0.0001)
     }
+
+    func testFaceHighInImageLooksFromAbove() {
+        let high = OffAxis.faceToWorld(midX: 0.5, midY: 0.25, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1)
+        let low = OffAxis.faceToWorld(midX: 0.5, midY: 0.75, ipdNorm: 0.08, screenW: 0.4, screenH: 0.25, sensitivity: 1)
+        XCTAssertGreaterThan(high.y, 0)
+        XCTAssertLessThan(low.y, 0)
+    }
 }

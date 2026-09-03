@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct EyeTrackingOverlay: View {
@@ -8,44 +9,42 @@ struct EyeTrackingOverlay: View {
     var tracking: Bool
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                ParallaxTheme.surface
+        ZStack {
+            ParallaxTheme.surface
+            Canvas { ctx, size in
                 if let preview {
-                    Image(nsImage: preview)
-                        .resizable()
-                        .interpolation(.medium)
-                        .scaledToFill()
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .clipped()
-                        .scaleEffect(x: -1, y: 1)
-                } else {
-                    Text("Kamera aus  ·  Demo aktiv")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundStyle(ParallaxTheme.muted)
+                    let img = ctx.resolve(Image(nsImage: preview))
+                    ctx.translateBy(x: size.width, y: 0)
+                    ctx.scaleBy(x: -1, y: 1)
+                    ctx.draw(img, in: CGRect(origin: .zero, size: size))
+                    ctx.scaleBy(x: -1, y: 1)
+                    ctx.translateBy(x: -size.width, y: 0)
                 }
 
-                Canvas { ctx, size in
-                    if let face {
-                        let r = vis(face, size)
-                        var path = Path(roundedRect: r, cornerRadius: 4)
-                        ctx.stroke(
-                            path,
-                            with: .color(ParallaxTheme.live.opacity(0.55)),
-                            style: StrokeStyle(lineWidth: 1.2, dash: [4, 3])
-                        )
-                    }
-                    if let left, let right {
-                        let a = vis(left, size)
-                        let b = vis(right, size)
-                        var bar = Path()
-                        bar.move(to: a)
-                        bar.addLine(to: b)
-                        ctx.stroke(bar, with: .color(ParallaxTheme.live), lineWidth: 1.4)
-                        drawEye(&ctx, at: a, label: "L")
-                        drawEye(&ctx, at: b, label: "R")
-                    }
+                if let face {
+                    let r = vis(face, size)
+                    let path = Path(roundedRect: r, cornerRadius: 4)
+                    ctx.stroke(
+                        path,
+                        with: .color(ParallaxTheme.live.opacity(0.55)),
+                        style: StrokeStyle(lineWidth: 1.2, dash: [4, 3])
+                    )
                 }
+                if let left, let right {
+                    let a = vis(left, size)
+                    let b = vis(right, size)
+                    var bar = Path()
+                    bar.move(to: a)
+                    bar.addLine(to: b)
+                    ctx.stroke(bar, with: .color(ParallaxTheme.live), lineWidth: 1.4)
+                    drawEye(&ctx, at: a, label: "L")
+                    drawEye(&ctx, at: b, label: "R")
+                }
+            }
+            if preview == nil {
+                Text("Kamera aus  ·  Demo aktiv")
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundStyle(ParallaxTheme.muted)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -57,7 +56,7 @@ struct EyeTrackingOverlay: View {
     }
 
     private func vis(_ r: CGRect, _ size: CGSize) -> CGRect {
-        // Vision box origin is bottom-left; preview is selfie-mirrored.
+        // Vision box origin is bottom-left; preview is selfie-mirrored in Canvas.
         let x = (1 - (r.minX + r.width)) * size.width
         let y = (1 - (r.minY + r.height)) * size.height
         return CGRect(

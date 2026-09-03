@@ -19,9 +19,16 @@ final class HologramController: NSObject, ObservableObject {
     private var elapsed: Float = 0
     private let eyeLock = NSLock()
     private var pendingEye = EyeWorld(x: 0, y: 0.02, z: 0.55)
+    private var pendingModelId: String?
 
-    var screenWidth: Float { screenW }
-    var screenHeight: Float { screenH }
+    var screenWidth: Float { screenSize().w }
+    var screenHeight: Float { screenSize().h }
+
+    func screenSize() -> (w: Float, h: Float) {
+        eyeLock.lock()
+        defer { eyeLock.unlock() }
+        return (screenW, screenH)
+    }
 
     override init() {
         super.init()
@@ -41,18 +48,29 @@ final class HologramController: NSObject, ObservableObject {
         scene.rootNode.addChildNode(stage)
         addLights()
         rebuildRoom()
-        setModel("orrery")
+        applyModel("orrery")
     }
 
     func resize(aspect: Float) {
         let w = 0.235 * max(aspect, 0.5)
-        if abs(w - screenW) < 0.002 { return }
-        screenH = 0.235
-        screenW = w
+        eyeLock.lock()
+        let unchanged = abs(w - screenW) < 0.002
+        if !unchanged {
+            screenH = 0.235
+            screenW = w
+        }
+        eyeLock.unlock()
+        if unchanged { return }
         rebuildRoom()
     }
 
     func setModel(_ id: String) {
+        eyeLock.lock()
+        pendingModelId = id
+        eyeLock.unlock()
+    }
+
+    private func applyModel(_ id: String) {
         guard id != modelId || model.parent == nil else { return }
         modelId = id
         model.removeFromParentNode()
@@ -72,22 +90,16 @@ final class HologramController: NSObject, ObservableObject {
         eyeLock.unlock()
     }
 
-    func applyEye(_ eye: EyeWorld) {
-        let e = SIMD3<Float>(eye.x, eye.y, max(0.12, eye.z))
-        cameraNode.position = SCNVector3(e.x, e.y, e.z)
-        cameraNode.eulerAngles = SCNVector3Zero
-        cameraNode.orientation = SCNQuaternion(0, 0, 0, 1)
-        let f = OffAxis.frustum(eye: e, screenW: screenW, screenH: screenH)
-        camera.projectionTransform = SCNMatrix4(OffAxis.projectionMatrix(
-            left: f.left, right: f.right, top: f.top, bottom: f.bottom, near: f.near, far: f.far
-        ))
-    }
-
     func tick(dt: Float) {
         eyeLock.lock()
         let e = pendingEye
+        let queuedModel = pendingModelId
+        pendingModelId = nil
+        let sw = screenW
+        let sh = screenH
         eyeLock.unlock()
-        applyEye(e)
+        if let queuedModel { applyModel(queuedModel) }
+        applyEye(e, screenW: sw, screenH: sh)
         elapsed += dt
         for (node, axis, spin) in rings {
             node.simdEulerAngles += axis * spin * dt
@@ -101,6 +113,17 @@ final class HologramController: NSObject, ObservableObject {
                 sin(p.3) * p.1
             )
         }
+    }
+
+    private func applyEye(_ eye: EyeWorld, screenW: Float, screenH: Float) {
+        let e = SIMD3<Float>(eye.x, eye.y, max(0.12, eye.z))
+        cameraNode.position = SCNVector3(e.x, e.y, e.z)
+        cameraNode.eulerAngles = SCNVector3Zero
+        cameraNode.orientation = SCNQuaternion(0, 0, 0, 1)
+        let f = OffAxis.frustum(eye: e, screenW: screenW, screenH: screenH)
+        camera.projectionTransform = SCNMatrix4(OffAxis.projectionMatrix(
+            left: f.left, right: f.right, top: f.top, bottom: f.bottom, near: f.near, far: f.far
+        ))
     }
 
     private func addLights() {

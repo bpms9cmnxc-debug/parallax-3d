@@ -107,7 +107,7 @@ struct ContentView: View {
                 mono("X \(fmt(model.eye.x)) m")
                 mono("Y \(fmt(model.eye.y)) m")
                 mono("Z \(fmt(model.eye.z)) m")
-                mono(String(format: "IPD %.3f", model.eyes?.ipd ?? 0))
+                mono(model.eyes.map { $0.ipd > 0 ? String(format: "IPD %.3f", $0.ipd) : "IPD —" } ?? "IPD —")
             }
 
             if let err = model.camera.errorMessage {
@@ -115,10 +115,10 @@ struct ContentView: View {
             }
 
             HStack(spacing: 8) {
-                Button(model.camera.isRunning ? "Kamera stoppen" : "Kamera starten") {
-                    if model.camera.isRunning { model.stopCamera() } else { model.startCamera() }
+                Button(model.cameraActive ? "Kamera stoppen" : "Kamera starten") {
+                    if model.cameraActive { model.stopCamera() } else { model.startCamera() }
                 }
-                .buttonStyle(PrimaryButtonStyle(filled: !model.camera.isRunning))
+                .buttonStyle(PrimaryButtonStyle(filled: !model.cameraActive))
                 Button("Demo") { model.stopCamera() }
                     .buttonStyle(PrimaryButtonStyle(filled: false))
             }

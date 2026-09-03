@@ -21,27 +21,36 @@ final class AppModel: ObservableObject {
     private var timer: Timer?
     private var frames = 0
     private var fpsClock: Float = 0
+    private var hudClock: Float = 0
     private var bag = Set<AnyCancellable>()
     private var lastLock: TimeInterval = 0
+    private var running = false
+    private var wantsCamera = false
+    private var smoothed = EyeWorld(x: 0, y: 0.02, z: 0.55)
 
-    var live: Bool { camera.isRunning && (eyes?.tracking ?? false) }
-    var searching: Bool { camera.isRunning && !(eyes?.tracking ?? false) }
+    var live: Bool { wantsCamera && camera.isRunning && (eyes?.tracking ?? false) }
+    var searching: Bool { wantsCamera && !(eyes?.tracking ?? false) }
+    var cameraActive: Bool { wantsCamera }
 
     func start() {
-        hologram.setEye(eye)
+        guard !running else { return }
+        running = true
+        hologram.setEye(smoothed)
         camera.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &bag)
         camera.onBuffer = { [weak self] pb in
             guard let self else { return }
+            let size = self.hologram.screenSize()
             let sample = self.tracker.detect(
                 buffer: pb,
-                screenW: self.hologram.screenWidth,
-                screenH: self.hologram.screenHeight,
+                screenW: size.w,
+                screenH: size.h,
                 sensitivity: self.sensitivity
             )
             DispatchQueue.main.async {
+                guard self.running, self.wantsCamera else { return }
                 let now = CACurrentMediaTime()
                 if let sample {
                     self.eyes = sample
@@ -63,15 +72,20 @@ final class AppModel: ObservableObject {
             self?.step(1 / 60)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
-            self?.startCamera()
+            guard let self, self.running else { return }
+            self.startCamera()
         }
     }
 
     func stop() {
+        running = false
+        wantsCamera = false
         timer?.invalidate()
         timer = nil
         camera.stop()
         camera.onBuffer = nil
+        bag.removeAll()
+        eyes = nil
     }
 
     func setModel(_ id: String) {
@@ -82,8 +96,9 @@ final class AppModel: ObservableObject {
     func startCamera() {
         AVCaptureDevice.requestAccess(for: .video) { [weak self] ok in
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self, self.running else { return }
                 if ok {
+                    self.wantsCamera = true
                     self.camera.start()
                     self.mode = "camera"
                 } else {
@@ -95,13 +110,14 @@ final class AppModel: ObservableObject {
     }
 
     func stopCamera() {
+        wantsCamera = false
         camera.stop()
         eyes = nil
         mode = "demo"
     }
 
     private func step(_ dt: Float) {
-        var target = eye
+        var target = smoothed
         if live, let w = eyes?.world {
             target = w
             mode = "camera"
@@ -115,12 +131,17 @@ final class AppModel: ObservableObject {
             mode = "demo"
         }
         let k = 1 - exp(-10 * dt)
-        eye = EyeWorld(
-            x: eye.x + (target.x - eye.x) * k,
-            y: eye.y + (target.y - eye.y) * k,
-            z: eye.z + (target.z - eye.z) * k
+        smoothed = EyeWorld(
+            x: smoothed.x + (target.x - smoothed.x) * k,
+            y: smoothed.y + (target.y - smoothed.y) * k,
+            z: smoothed.z + (target.z - smoothed.z) * k
         )
-        hologram.setEye(eye)
+        hologram.setEye(smoothed)
+        hudClock += dt
+        if hudClock >= 0.048 {
+            hudClock = 0
+            eye = smoothed
+        }
         frames += 1
         fpsClock += dt
         if fpsClock >= 0.4 {

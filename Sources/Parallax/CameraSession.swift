@@ -19,7 +19,7 @@ final class CameraSession: NSObject, ObservableObject {
     private let output = AVCaptureVideoDataOutput()
     private let queue = DispatchQueue(label: "parallax.camera", qos: .userInteractive)
     private var lastPreview: CFTimeInterval = 0
-    private let previewQueue = DispatchQueue(label: "parallax.preview", qos: .utility)
+    private static let ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
     func start() {
         DispatchQueue.main.async { self.errorMessage = nil }
@@ -29,6 +29,7 @@ final class CameraSession: NSObject, ObservableObject {
     func stop() {
         queue.async { [weak self] in
             guard let self else { return }
+            self.output.setSampleBufferDelegate(nil, queue: nil)
             if self.session.isRunning { self.session.stopRunning() }
             DispatchQueue.main.async {
                 self.isRunning = false
@@ -39,6 +40,7 @@ final class CameraSession: NSObject, ObservableObject {
 
     private func configureAndRun() {
         if session.isRunning { session.stopRunning() }
+        output.setSampleBufferDelegate(nil, queue: nil)
         session.beginConfiguration()
         session.inputs.forEach { session.removeInput($0) }
         session.outputs.forEach { session.removeOutput($0) }
@@ -56,7 +58,12 @@ final class CameraSession: NSObject, ObservableObject {
 
         do {
             let input = try AVCaptureDeviceInput(device: device)
-            if session.canAddInput(input) { session.addInput(input) }
+            guard session.canAddInput(input) else {
+                session.commitConfiguration()
+                DispatchQueue.main.async { self.errorMessage = "Kamera nicht verfügbar." }
+                return
+            }
+            session.addInput(input)
         } catch {
             session.commitConfiguration()
             DispatchQueue.main.async { self.errorMessage = error.localizedDescription }
@@ -68,19 +75,25 @@ final class CameraSession: NSObject, ObservableObject {
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
         ]
         output.setSampleBufferDelegate(self, queue: queue)
-        if session.canAddOutput(output) { session.addOutput(output) }
-
-        if let conn = output.connection(with: .video), conn.isVideoMirroringSupported {
-            let front = device.position == .front || device.position == .unspecified
-            conn.isVideoMirrored = front
+        guard session.canAddOutput(output) else {
+            session.commitConfiguration()
+            DispatchQueue.main.async { self.errorMessage = "Kamera nicht verfügbar." }
+            return
         }
+        session.addOutput(output)
+        // Leave the pixel buffer unmirrored so Vision matches the web tracker.
+        // The overlay mirrors only the preview.
         session.commitConfiguration()
 
         session.startRunning()
         let name = device.localizedName
+        let running = session.isRunning
         DispatchQueue.main.async {
             self.deviceName = name
-            self.isRunning = true
+            self.isRunning = running
+            if !running {
+                self.errorMessage = "Kamera konnte nicht gestartet werden."
+            }
         }
     }
 
@@ -112,10 +125,10 @@ extension CameraSession: AVCaptureVideoDataOutputSampleBufferDelegate {
         let now = CACurrentMediaTime()
         if now - lastPreview >= 0.08 {
             lastPreview = now
+            // Render while the capture buffer is still valid — CIImage does not copy pixels.
             let ci = CIImage(cvPixelBuffer: pb)
-            previewQueue.async { [weak self] in
-                guard let img = Self.makePreview(ci) else { return }
-                DispatchQueue.main.async { self?.preview = img }
+            if let img = Self.makePreview(ci) {
+                DispatchQueue.main.async { [weak self] in self?.preview = img }
             }
         }
     }
@@ -127,8 +140,7 @@ extension CameraSession: AVCaptureVideoDataOutputSampleBufferDelegate {
         let scaled = ci.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         let tw = extent.width * scale
         let th = extent.height * scale
-        let ctx = CIContext(options: [.useSoftwareRenderer: false])
-        guard let cg = ctx.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: tw, height: th)) else { return nil }
+        guard let cg = ciContext.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: tw, height: th)) else { return nil }
         return NSImage(cgImage: cg, size: NSSize(width: tw, height: th))
     }
 }
