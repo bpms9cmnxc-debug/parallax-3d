@@ -143,7 +143,7 @@ final class HologramController: NSObject, ObservableObject {
         cameraNode.eulerAngles = SCNVector3Zero
         cameraNode.orientation = SCNQuaternion(0, 0, 0, 1)
         let f = OffAxis.frustum(eye: e, screenW: screenW, screenH: screenH)
-        camera.projectionTransform = SCNMatrix4(OffAxis.projectionMatrix(
+        camera.projectionTransform = sceneKitProjection(OffAxis.projectionMatrix(
             left: f.left, right: f.right, top: f.top, bottom: f.bottom, near: f.near, far: f.far
         ))
     }
@@ -420,13 +420,14 @@ final class HologramController: NSObject, ObservableObject {
     }
 }
 
-private extension SCNMatrix4 {
-    init(_ m: simd_float4x4) {
-        self.init(
-            m11: CGFloat(m.columns.0.x), m12: CGFloat(m.columns.1.x), m13: CGFloat(m.columns.2.x), m14: CGFloat(m.columns.3.x),
-            m21: CGFloat(m.columns.0.y), m22: CGFloat(m.columns.1.y), m23: CGFloat(m.columns.2.y), m24: CGFloat(m.columns.3.y),
-            m31: CGFloat(m.columns.0.z), m32: CGFloat(m.columns.1.z), m33: CGFloat(m.columns.2.z), m34: CGFloat(m.columns.3.z),
-            m41: CGFloat(m.columns.0.w), m42: CGFloat(m.columns.1.w), m43: CGFloat(m.columns.2.w), m44: CGFloat(m.columns.3.w)
-        )
-    }
+private func sceneKitProjection(_ m: simd_float4x4) -> SCNMatrix4 {
+    // simd is column-major. SCNMatrix4.m11…m14 is the first *column* (same
+    // layout as a bitcast). Filling a row here transposes the frustum and
+    // clips the hologram — only the deep lattice survives.
+    SCNMatrix4(
+        m11: CGFloat(m.columns.0.x), m12: CGFloat(m.columns.0.y), m13: CGFloat(m.columns.0.z), m14: CGFloat(m.columns.0.w),
+        m21: CGFloat(m.columns.1.x), m22: CGFloat(m.columns.1.y), m23: CGFloat(m.columns.1.z), m24: CGFloat(m.columns.1.w),
+        m31: CGFloat(m.columns.2.x), m32: CGFloat(m.columns.2.y), m33: CGFloat(m.columns.2.z), m34: CGFloat(m.columns.2.w),
+        m41: CGFloat(m.columns.3.x), m42: CGFloat(m.columns.3.y), m43: CGFloat(m.columns.3.z), m44: CGFloat(m.columns.3.w)
+    )
 }

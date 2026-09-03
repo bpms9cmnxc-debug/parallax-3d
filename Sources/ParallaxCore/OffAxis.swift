@@ -36,7 +36,10 @@ public enum OffAxis {
         return (left, right, bottom, top, near, far)
     }
 
-    /// Column-major 4×4 matching OpenGL / SceneKit / Three.js `makePerspective(l,r,t,b,n,f)`.
+    /// Column-major 4×4. OpenGL `makePerspective`, then remapped to Metal
+    /// clip Z in [0, 1] — SceneKit on Apple Silicon clips anything with NDC z < 0.
+    /// (A GL matrix alone puts the hologram at the screen plane at z_ndc ≈ −1…0.8;
+    ///  the lattice further back can survive, which looks like “only a grid”.)
     public static func projectionMatrix(
         left: Float, right: Float, top: Float, bottom: Float, near: Float, far: Float
     ) -> simd_float4x4 {
@@ -46,12 +49,20 @@ public enum OffAxis {
         let b = (top + bottom) / (top - bottom)
         let c = -(far + near) / (far - near)
         let d = -2 * far * near / (far - near)
-        return simd_float4x4(columns: (
+        let gl = simd_float4x4(columns: (
             SIMD4(x, 0, 0, 0),
             SIMD4(0, y, 0, 0),
             SIMD4(a, b, c, -1),
             SIMD4(0, 0, d, 0)
         ))
+        // ndc.z_metal = 0.5 * ndc.z_gl + 0.5
+        let glToMetal = simd_float4x4(columns: (
+            SIMD4(1, 0, 0, 0),
+            SIMD4(0, 1, 0, 0),
+            SIMD4(0, 0, 0.5, 0),
+            SIMD4(0, 0, 0.5, 1)
+        ))
+        return glToMetal * gl
     }
 
     public static func projection(eye: SIMD3<Float>, screenW: Float, screenH: Float) -> simd_float4x4 {
