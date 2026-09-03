@@ -145,7 +145,7 @@ final class HologramController: NSObject, ObservableObject {
         let f = OffAxis.frustum(eye: e, screenW: screenW, screenH: screenH)
         camera.zNear = Double(f.near)
         camera.zFar = Double(f.far)
-        camera.projectionTransform = SCNMatrix4FromMat4(OffAxis.projectionMatrix(
+        camera.projectionTransform = SCNMatrix4(OffAxis.projectionMatrix(
             left: f.left, right: f.right, top: f.top, bottom: f.bottom, near: f.near, far: f.far
         ))
     }
