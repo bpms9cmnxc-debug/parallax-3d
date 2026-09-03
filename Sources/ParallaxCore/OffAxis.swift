@@ -25,8 +25,8 @@ public enum OffAxis {
     public static let near: Float = 0.022
     public static let far: Float = 8
     /// Lateral gain: a modest head move (~15 % of the frame) must already look *around* the object.
-    public static let lateralGain: Float = 1.55
-    public static let verticalGain: Float = 1.12
+    public static let lateralGain: Float = 2.35
+    public static let verticalGain: Float = 1.35
 
     /// Sheared frustum: screen on z = 0, viewer at `eye`. Scene does not rotate.
     public static func frustum(

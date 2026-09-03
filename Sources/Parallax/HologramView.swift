@@ -4,10 +4,14 @@ import SceneKit
 import SwiftUI
 
 enum ScreenMeasure {
+    private static var lastDisplay: CGDirectDisplayID = 0
+    private static var lastFrameW: CGFloat = 0
+    private static var metersPerPoint: Float = 0
+    private static let fallback: (Float, Float) = (0.30, 0.19)
+
     /// Physical size of the SceneKit view in metres — the hologram portal.
     static func meters(for view: NSView) -> (w: Float, h: Float) {
         let screen = view.window?.screen ?? NSScreen.main
-        let fallback: (Float, Float) = (0.30, 0.19)
         guard let screen else { return fallback }
         let key = NSDeviceDescriptionKey("NSScreenNumber")
         let id: CGDirectDisplayID
@@ -16,12 +20,17 @@ enum ScreenMeasure {
         } else {
             id = CGMainDisplayID()
         }
-        let mm = CGDisplayScreenSize(id)
         let frame = screen.frame
-        guard mm.width > 40, frame.width > 20 else { return fallback }
-        let mpp = Float(mm.width / 1000) / Float(frame.width)
-        let w = Float(max(view.bounds.width, 1)) * mpp
-        let h = Float(max(view.bounds.height, 1)) * mpp
+        if id != lastDisplay || abs(frame.width - lastFrameW) > 0.5 {
+            let mm = CGDisplayScreenSize(id)
+            guard mm.width > 40, frame.width > 20 else { return fallback }
+            lastDisplay = id
+            lastFrameW = frame.width
+            metersPerPoint = Float(mm.width / 1000) / Float(frame.width)
+        }
+        guard metersPerPoint > 0 else { return fallback }
+        let w = Float(max(view.bounds.width, 1)) * metersPerPoint
+        let h = Float(max(view.bounds.height, 1)) * metersPerPoint
         return (max(0.16, w), max(0.10, h))
     }
 }
@@ -57,6 +66,8 @@ struct HologramView: NSViewRepresentable {
     final class Coordinator: NSObject, SCNSceneRendererDelegate {
         let controller: HologramController
         private var last: TimeInterval = 0
+        private var lastViewW: CGFloat = 0
+        private var lastViewH: CGFloat = 0
 
         init(controller: HologramController) {
             self.controller = controller
@@ -67,8 +78,14 @@ struct HologramView: NSViewRepresentable {
             last = time
             controller.tick(dt: Float(dt))
             if let view = renderer as? SCNView {
-                let m = ScreenMeasure.meters(for: view)
-                controller.resize(widthMeters: m.w, heightMeters: m.h)
+                let bw = view.bounds.width
+                let bh = view.bounds.height
+                if abs(bw - lastViewW) > 0.5 || abs(bh - lastViewH) > 0.5 {
+                    lastViewW = bw
+                    lastViewH = bh
+                    let m = ScreenMeasure.meters(for: view)
+                    controller.resize(widthMeters: m.w, heightMeters: m.h)
+                }
             }
         }
     }
