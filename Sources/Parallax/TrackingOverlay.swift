@@ -57,10 +57,12 @@ struct EyeTrackingOverlay: View {
     }
 
     private func vis(_ r: CGRect, _ size: CGSize) -> CGRect {
-        let o = vis(CGPoint(x: r.minX, y: r.maxY), size)
+        // Vision box origin is bottom-left; preview is selfie-mirrored.
+        let x = (1 - (r.minX + r.width)) * size.width
+        let y = (1 - (r.minY + r.height)) * size.height
         return CGRect(
-            x: o.x,
-            y: o.y,
+            x: x,
+            y: y,
             width: r.width * size.width,
             height: r.height * size.height
         )

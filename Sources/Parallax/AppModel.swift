@@ -2,6 +2,7 @@ import AVFoundation
 import Combine
 import Foundation
 import ParallaxCore
+import QuartzCore
 import SwiftUI
 
 final class AppModel: ObservableObject {
@@ -21,11 +22,13 @@ final class AppModel: ObservableObject {
     private var frames = 0
     private var fpsClock: Float = 0
     private var bag = Set<AnyCancellable>()
+    private var lastLock: TimeInterval = 0
 
     var live: Bool { camera.isRunning && (eyes?.tracking ?? false) }
+    var searching: Bool { camera.isRunning && !(eyes?.tracking ?? false) }
 
     func start() {
-        hologram.applyEye(eye)
+        hologram.setEye(eye)
         camera.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
@@ -34,13 +37,26 @@ final class AppModel: ObservableObject {
             guard let self else { return }
             let sample = self.tracker.detect(
                 buffer: pb,
-                screenW: 0.42,
-                screenH: 0.235,
+                screenW: self.hologram.screenWidth,
+                screenH: self.hologram.screenHeight,
                 sensitivity: self.sensitivity
             )
             DispatchQueue.main.async {
-                self.eyes = sample
-                if sample != nil { self.mode = "camera" }
+                let now = CACurrentMediaTime()
+                if let sample {
+                    self.eyes = sample
+                    self.lastLock = now
+                    self.mode = "camera"
+                } else if let prev = self.eyes, prev.tracking, now - self.lastLock > 0.28 {
+                    self.eyes = TrackedEyes(
+                        left: prev.left,
+                        right: prev.right,
+                        face: prev.face,
+                        world: prev.world,
+                        ipd: prev.ipd,
+                        tracking: false
+                    )
+                }
             }
         }
         timer = Timer.scheduledTimer(withTimeInterval: 1 / 60, repeats: true) { [weak self] _ in
@@ -105,7 +121,7 @@ final class AppModel: ObservableObject {
             y: eye.y + (target.y - eye.y) * k,
             z: eye.z + (target.z - eye.z) * k
         )
-        hologram.applyEye(eye)
+        hologram.setEye(eye)
         frames += 1
         fpsClock += dt
         if fpsClock >= 0.4 {

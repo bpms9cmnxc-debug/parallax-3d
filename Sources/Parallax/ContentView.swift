@@ -71,7 +71,7 @@ struct ContentView: View {
                 Circle()
                     .fill(model.live ? ParallaxTheme.live : ParallaxTheme.muted)
                     .frame(width: 6, height: 6)
-                Text(model.live ? "TRACKING LIVE" : model.mode == "mouse" ? "MAUS-PARALLAX" : "DEMO-ORBIT")
+                Text(model.live ? "TRACKING LIVE" : model.searching ? "SUCHE GESICHT" : model.mode == "mouse" ? "MAUS-PARALLAX" : "DEMO-ORBIT")
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(ParallaxTheme.fg)
             }
@@ -90,7 +90,7 @@ struct ContentView: View {
                     .tracking(1.6)
                     .foregroundStyle(ParallaxTheme.muted)
                 Spacer()
-                Text(model.live ? "IRIS LOCK" : "IDLE")
+                Text(model.live ? "IRIS LOCK" : model.searching ? "SUCHE" : "IDLE")
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(model.live ? ParallaxTheme.live : ParallaxTheme.muted)
             }
@@ -125,7 +125,7 @@ struct ContentView: View {
         }
         .padding(12)
         .frame(width: 340)
-        .background(.ultraThinMaterial.opacity(0.55), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(ParallaxTheme.fg.opacity(0.12)))
     }
 
@@ -172,7 +172,7 @@ struct ContentView: View {
         }
         .padding(12)
         .frame(width: 240)
-        .background(.ultraThinMaterial.opacity(0.55), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(ParallaxTheme.fg.opacity(0.12)))
     }
 
@@ -190,7 +190,7 @@ struct ContentView: View {
         }
         .padding(12)
         .frame(width: 240, alignment: .leading)
-        .background(.ultraThinMaterial.opacity(0.55), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(ParallaxTheme.fg.opacity(0.12)))
     }
 

@@ -1,9 +1,11 @@
 import AVFoundation
 import AppKit
 import Combine
+import CoreImage
 import CoreMedia
 import CoreVideo
 import Foundation
+import QuartzCore
 
 final class CameraSession: NSObject, ObservableObject {
     @Published var isRunning = false
@@ -36,6 +38,7 @@ final class CameraSession: NSObject, ObservableObject {
     }
 
     private func configureAndRun() {
+        if session.isRunning { session.stopRunning() }
         session.beginConfiguration()
         session.inputs.forEach { session.removeInput($0) }
         session.outputs.forEach { session.removeOutput($0) }
@@ -109,23 +112,21 @@ extension CameraSession: AVCaptureVideoDataOutputSampleBufferDelegate {
         let now = CACurrentMediaTime()
         if now - lastPreview >= 0.08 {
             lastPreview = now
-            let copy = pb
+            let ci = CIImage(cvPixelBuffer: pb)
             previewQueue.async { [weak self] in
-                guard let img = Self.makePreview(copy) else { return }
+                guard let img = Self.makePreview(ci) else { return }
                 DispatchQueue.main.async { self?.preview = img }
             }
         }
     }
 
-    private static func makePreview(_ pb: CVPixelBuffer) -> NSImage? {
-        let w = CVPixelBufferGetWidth(pb)
-        let h = CVPixelBufferGetHeight(pb)
-        guard w > 1, h > 1 else { return nil }
-        let ci = CIImage(cvPixelBuffer: pb)
-        let scale = min(1, 480 / CGFloat(w))
+    private static func makePreview(_ ci: CIImage) -> NSImage? {
+        let extent = ci.extent
+        guard extent.width > 1, extent.height > 1 else { return nil }
+        let scale = min(1, 480 / extent.width)
         let scaled = ci.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        let tw = CGFloat(w) * scale
-        let th = CGFloat(h) * scale
+        let tw = extent.width * scale
+        let th = extent.height * scale
         let ctx = CIContext(options: [.useSoftwareRenderer: false])
         guard let cg = ctx.createCGImage(scaled, from: CGRect(x: 0, y: 0, width: tw, height: th)) else { return nil }
         return NSImage(cgImage: cg, size: NSSize(width: tw, height: th))

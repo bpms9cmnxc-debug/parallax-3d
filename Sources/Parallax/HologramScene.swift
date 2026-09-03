@@ -17,6 +17,11 @@ final class HologramController: NSObject, ObservableObject {
     private var rings: [(SCNNode, SIMD3<Float>, Float)] = []
     private var planets: [(SCNNode, Float, Float, Float)] = []
     private var elapsed: Float = 0
+    private let eyeLock = NSLock()
+    private var pendingEye = EyeWorld(x: 0, y: 0.02, z: 0.55)
+
+    var screenWidth: Float { screenW }
+    var screenHeight: Float { screenH }
 
     override init() {
         super.init()
@@ -61,10 +66,17 @@ final class HologramController: NSObject, ObservableObject {
         stage.addChildNode(model)
     }
 
+    func setEye(_ eye: EyeWorld) {
+        eyeLock.lock()
+        pendingEye = eye
+        eyeLock.unlock()
+    }
+
     func applyEye(_ eye: EyeWorld) {
         let e = SIMD3<Float>(eye.x, eye.y, max(0.12, eye.z))
         cameraNode.position = SCNVector3(e.x, e.y, e.z)
         cameraNode.eulerAngles = SCNVector3Zero
+        cameraNode.orientation = SCNQuaternion(0, 0, 0, 1)
         let f = OffAxis.frustum(eye: e, screenW: screenW, screenH: screenH)
         camera.projectionTransform = SCNMatrix4(OffAxis.projectionMatrix(
             left: f.left, right: f.right, top: f.top, bottom: f.bottom, near: f.near, far: f.far
@@ -72,6 +84,10 @@ final class HologramController: NSObject, ObservableObject {
     }
 
     func tick(dt: Float) {
+        eyeLock.lock()
+        let e = pendingEye
+        eyeLock.unlock()
+        applyEye(e)
         elapsed += dt
         for (node, axis, spin) in rings {
             node.simdEulerAngles += axis * spin * dt
