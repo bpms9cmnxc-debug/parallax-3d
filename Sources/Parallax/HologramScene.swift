@@ -120,9 +120,9 @@ final class HologramController: NSObject, ObservableObject {
     }
 
     private func applyStageTransform() {
-        stage.simdPosition = SIMD3.zero
+        stage.simdPosition = SIMD3(0, 0, -(hologramDepth - 1) * 0.12)
         stage.simdEulerAngles = SIMD3.zero
-        stage.simdScale = SIMD3(modelScale, modelScale, modelScale * hologramDepth)
+        stage.simdScale = SIMD3(modelScale, modelScale, modelScale)
     }
 
     func setEye(_ eye: EyeWorld) {
