@@ -122,11 +122,11 @@ final class TrackerLink: ObservableObject {
         var fallback: String?
         while let p = ptr {
             defer { ptr = p.pointee.ifa_next }
-            guard p.pointee.ifa_addr.pointee.sa_family == UInt8(AF_INET) else { continue }
+            guard let addr = p.pointee.ifa_addr, addr.pointee.sa_family == UInt8(AF_INET) else { continue }
             let name = String(cString: p.pointee.ifa_name)
             if name.hasPrefix("lo") { continue }
             var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-            getnameinfo(p.pointee.ifa_addr, socklen_t(p.pointee.ifa_addr.pointee.sa_len), &host, socklen_t(host.count), nil, 0, NI_NUMERICHOST)
+            getnameinfo(addr, socklen_t(addr.pointee.sa_len), &host, socklen_t(host.count), nil, 0, NI_NUMERICHOST)
             let ip = String(cString: host)
             if ip.hasPrefix("127.") || ip.hasPrefix("169.254.") { continue }
             if name.hasPrefix("en") { return ip }

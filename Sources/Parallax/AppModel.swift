@@ -209,7 +209,7 @@ final class AppModel: ObservableObject {
 
     func zeroIPhone() {
         guard let p = iphone.latest else { return }
-        iphoneOrigin = SIMD3(p.x, p.y, 0)
+        iphoneOrigin = SIMD3(p.x, p.y + calibration.iphoneOffsetY, 0)
     }
 
     func applyCalibration(_ cal: Calibration) {

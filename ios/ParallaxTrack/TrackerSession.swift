@@ -138,7 +138,8 @@ final class TrackerSession: NSObject, ObservableObject, ARSessionDelegate {
         let inv = frame.camera.transform.inverse
         let p = face.transform.columns.3
         let inCam = inv * SIMD4<Float>(p.x, p.y, p.z, 1)
-        let xM = inCam.x
+        // Camera +X is the viewer's left. Packet contract is +X right.
+        let xM = -inCam.x
         let yM = inCam.y
         let zM = max(0.25, abs(inCam.z))
         push(x: xM, y: yM, z: zM, ipd: 0.063, quality: 0.95, source: "truedepth")
@@ -146,7 +147,9 @@ final class TrackerSession: NSObject, ObservableObject, ARSessionDelegate {
 
     private func emitVision(_ frame: ARFrame) {
         let buf = frame.capturedImage
-        let handler = VNImageRequestHandler(cvPixelBuffer: buf, orientation: .right, options: [:])
+        // Buffer space (.up) so bbox, depth map and camera.intrinsics share one origin.
+        // .right oriented Vision coords against landscape buffer size put the face on the wrong pixel.
+        let handler = VNImageRequestHandler(cvPixelBuffer: buf, orientation: .up, options: [:])
         try? handler.perform([faceReq])
         guard let f = faceReq.results?.first else {
             DispatchQueue.main.async { self.quality = 0 }
@@ -168,7 +171,7 @@ final class TrackerSession: NSObject, ObservableObject, ARSessionDelegate {
         let imgH = Float(CVPixelBufferGetHeight(buf))
         let px = Float(mid.x) * imgW
         let py = (1 - Float(mid.y)) * imgH
-        let xM = (px - cx) * zM / max(fx, 1)
+        let xM = -((px - cx) * zM / max(fx, 1))
         let yM = -((py - cy) * zM / max(fy, 1))
         let q: Float = depth == nil ? 0.45 : 0.92
         push(x: xM, y: yM, z: zM, ipd: Float(box.width) * 0.35, quality: q, source: depth == nil ? "iphone" : "lidar")
