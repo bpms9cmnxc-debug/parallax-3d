@@ -171,7 +171,7 @@ final class ProjectionTests: XCTestCase {
 
     func testLookAroundTurnsTheObjectNotTheScreen() {
         let side = OffAxis.lookAround(eye: SIMD3(0.18, 0.0, 0.58))
-        XCTAssertGreaterThan(side.yaw, 0.45)
+        XCTAssertLessThan(side.yaw, -0.45)
         XCTAssertLessThan(abs(side.pitch), 0.05)
         let center = OffAxis.lookAround(eye: SIMD3(0, 0.02, 0.58))
         XCTAssertEqual(center.yaw, 0, accuracy: 0.02)

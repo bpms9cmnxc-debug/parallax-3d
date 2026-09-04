@@ -60,7 +60,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VER=$(python3 -c "import re,pathlib; t=pathlib.Path('macos/Info.plist').read_text(); m=re.search(r'CFBundleShortVersionString</key>\s*<string>([^<]+)', t); print(m.group(1) if m else '1.7.0')")
+          VER=$(python3 -c "import re,pathlib; t=pathlib.Path('macos/Info.plist').read_text(); m=re.search(r'CFBundleShortVersionString</key>\s*<string>([^<]+)', t); print(m.group(1) if m else '1.7.1')")
           TAG="v$VER"
           TITLE="Parallax 3D $VER"
           test -f Parallax-3D.dmg

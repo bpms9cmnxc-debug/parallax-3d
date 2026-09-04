@@ -79,8 +79,10 @@ public enum OffAxis {
 
     public static func lookAround(eye: SIMD3<Float>) -> (pitch: Float, yaw: Float) {
         let z = max(minZ, eye.z)
-        let yaw = atan2(eye.x, z) * orbitGain
-        let pitch = -atan2(eye.y, z) * orbitGain * 0.55
+        // Head to the right (x>0) must reveal the object's right face.
+        // SceneKit +Y yaw is CCW: positive yaw shows the LEFT face — invert.
+        let yaw = -atan2(eye.x, z) * orbitGain
+        let pitch = atan2(eye.y, z) * orbitGain * 0.55
         return (min(0.55, max(-0.55, pitch)), min(1.05, max(-1.05, yaw)))
     }
 
