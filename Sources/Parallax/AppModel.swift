@@ -18,11 +18,11 @@ final class AppModel: ObservableObject {
     @Published var modelScale: Float = 1
     @Published var importName: String?
     @Published var importError: String?
-    @Published var sensitivity: Float = 1.55
+    @Published var sensitivity: Float = 1.8
     @Published var autoDistance = true
     @Published var distanceMeters: Float = OffAxis.defaultZ
     @Published var tooClose = false
-    @Published var hologramDepth: Float = 1.4
+    @Published var hologramDepth: Float = 1.7
     @Published var calibration = Calibration.load()
     @Published var showCalibrate = false
     @Published var showIPhone = false
@@ -53,7 +53,7 @@ final class AppModel: ObservableObject {
         running = true
         if calibration.completed {
             let d = calibration.depth
-            hologramDepth = d < 0.5 ? 1.4 : min(2.2, max(0.8, d))
+            hologramDepth = d < 0.5 ? 1.7 : min(2.2, max(0.8, d))
         }
         hologram.setEye(smoothed)
         hologram.setDepth(hologramDepth)
@@ -219,7 +219,6 @@ final class AppModel: ObservableObject {
         calibration = c
         c.save()
         hologram.setDepth(c.depth)
-        sensitivity = 1.0
     }
 
     func faceSample() -> (nx: Float, ny: Float, ipd: Float)? {
@@ -233,6 +232,9 @@ final class AppModel: ObservableObject {
         var target = smoothed
         if let pkt = iphone.latest, iphone.connected, pkt.quality > 0.25 {
             var w = OffAxis.lidarToScreen(pkt, calibration: calibration, origin: iphoneOrigin)
+            let g = max(0.8, sensitivity)
+            w.x *= g
+            w.y *= g
             tooClose = pkt.z < OffAxis.minZ
             if !autoDistance { w.z = distanceMeters }
             target = w

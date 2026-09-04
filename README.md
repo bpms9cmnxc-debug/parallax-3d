@@ -1,6 +1,6 @@
 # Parallax 3D
 
-Live, brillenloses holografisches 3-D auf einem normalen Bildschirm. FaceTime-Augen **oder iPhone LiDAR / TrueDepth**. Das Diorama hat drei Tiefenebenen: Flasche vor der Scheibe, Tasse in der Scheibe, Bücher dahinter.
+Live, brillenloses holografisches 3-D auf einem normalen Bildschirm. FaceTime-Augen **oder iPhone LiDAR / TrueDepth**. Flacher farbiger Kasten wie ein 3D-Monitor: Würfel mit Seitenfarben, Ring zum Durchschauen, gelbe Kugel vor der Scheibe.
 
 Kein Headset. **Kein Hand-Tracking. Kein HTML.**
 
@@ -15,7 +15,7 @@ Helios wird nicht verändert.
 2. Oben rechts **iPhone LiDAR** — IP, Port, Continuity-Kamera
 3. iPhone: Zip in Xcode öffnen, Personal Team, aufs Gerät. Lokalnetz erlauben
 4. LiDAR-Rückseite (Pro, Display vom dir weg, oben auf den Mac) oder TrueDepth-Front
-5. Mac: **Mitte setzen**. Kopf bewegen — die Flasche gleitet anders als die Bücher
+5. Mac: **Mitte setzen**. Kopf bewegen — die gelbe Kugel gegen die Bücher, der Würfel zeigt andere Seiten. **3D-Stärke** hochdrehen. Ein Sony/Looking-Glass braucht Stereo-Hardware; hier ist es Motion-Parallax.
 
 macOS 14–27, Apple Silicon.
 

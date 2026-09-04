@@ -173,26 +173,29 @@ final class HologramController: NSObject, ObservableObject {
         cameraNode.eulerAngles = SCNVector3Zero
         cameraNode.orientation = SCNQuaternion(0, 0, 0, 1)
         let f = OffAxis.frustum(eye: e, screenW: screenW, screenH: screenH)
+        camera.usesOrthographicProjection = false
         camera.zNear = Double(f.near)
         camera.zFar = Double(f.far)
         camera.projectionTransform = SCNMatrix4(OffAxis.projectionMatrix(
             left: f.left, right: f.right, top: f.top, bottom: f.bottom, near: f.near, far: f.far
         ))
+        let look = OffAxis.lookAround(eye: e)
+        model.simdEulerAngles = SIMD3(look.pitch * 0.45, look.yaw, 0)
     }
 
     private func addLights() {
         let amb = SCNNode()
         amb.light = SCNLight()
         amb.light?.type = .ambient
-        amb.light?.color = NSColor(white: 0.92, alpha: 1)
-        amb.light?.intensity = 900
+        amb.light?.color = NSColor(white: 0.38, alpha: 1)
+        amb.light?.intensity = 420
         scene.rootNode.addChildNode(amb)
 
         let key = SCNNode()
         key.light = SCNLight()
         key.light?.type = .directional
         key.light?.color = NSColor(red: 1, green: 0.97, blue: 0.92, alpha: 1)
-        key.light?.intensity = 1600
+        key.light?.intensity = 2000
         key.light?.castsShadow = false
         key.position = SCNVector3(0.45, 0.7, 0.9)
         key.look(at: SCNVector3Zero)
@@ -219,57 +222,83 @@ final class HologramController: NSObject, ObservableObject {
 
     private func rebuildRoom() {
         room.childNodes.forEach { $0.removeFromParentNode() }
-        // Smaller than the overscanned frustum so walls never sit on clip planes.
-        let w = CGFloat(screenW) * 0.92
-        let h = CGFloat(screenH) * 0.92
-        let d: CGFloat = 1.55
-        let wall = wallMat()
+        // Shallow box = 3D-monitor volume. A deep hallway reads as a 2D photo.
+        let w = CGFloat(screenW)
+        let h = CGFloat(screenH)
+        let d: CGFloat = 0.36
+        let zFront: CGFloat = -0.012
 
-        func plane(_ sw: CGFloat, _ sh: CGFloat) -> SCNNode {
+        func wall(_ color: NSColor) -> SCNMaterial {
+            let m = SCNMaterial()
+            m.lightingModel = .phong
+            m.diffuse.contents = color
+            m.emission.contents = color.blended(withFraction: 0.72, of: .black) ?? color
+            m.specular.contents = NSColor(white: 0.25, alpha: 1)
+            m.shininess = 8
+            m.isDoubleSided = false
+            m.cullMode = .back
+            return m
+        }
+
+        func plane(_ sw: CGFloat, _ sh: CGFloat, _ material: SCNMaterial) -> SCNNode {
             let n = SCNNode(geometry: SCNPlane(width: sw, height: sh))
-            n.geometry?.firstMaterial = wall
+            n.geometry?.firstMaterial = material
             n.renderingOrder = -30
             return n
         }
 
-        let floor = plane(w, d)
+        let floor = plane(w, d, wall(NSColor(red: 0.16, green: 0.15, blue: 0.14, alpha: 1)))
         floor.eulerAngles.x = -.pi / 2
-        floor.position = SCNVector3(0, -h / 2, -d / 2)
+        floor.position = SCNVector3(0, -h / 2, zFront - d / 2)
         room.addChildNode(floor)
 
-        let ceil = plane(w, d)
+        let ceil = plane(w, d, wall(NSColor(red: 0.22, green: 0.23, blue: 0.26, alpha: 1)))
         ceil.eulerAngles.x = .pi / 2
-        ceil.position = SCNVector3(0, h / 2, -d / 2)
+        ceil.position = SCNVector3(0, h / 2, zFront - d / 2)
         room.addChildNode(ceil)
 
-        let back = plane(w, h)
-        back.position = SCNVector3(0, 0, -d)
+        let back = plane(w, h, wall(NSColor(red: 0.18, green: 0.28, blue: 0.32, alpha: 1)))
+        back.position = SCNVector3(0, 0, zFront - d)
         room.addChildNode(back)
 
-        let left = plane(d, h)
+        let left = plane(d, h, wall(NSColor(red: 0.62, green: 0.28, blue: 0.18, alpha: 1)))
         left.eulerAngles.y = .pi / 2
-        left.position = SCNVector3(-w / 2, 0, -d / 2)
+        left.position = SCNVector3(-w / 2, 0, zFront - d / 2)
         room.addChildNode(left)
 
-        let right = plane(d, h)
+        let right = plane(d, h, wall(NSColor(red: 0.18, green: 0.42, blue: 0.58, alpha: 1)))
         right.eulerAngles.y = -.pi / 2
-        right.position = SCNVector3(w / 2, 0, -d / 2)
+        right.position = SCNVector3(w / 2, 0, zFront - d / 2)
         room.addChildNode(right)
 
-        room.addChildNode(volumeGrid(w: w * 0.94, h: h * 0.94, d: d))
+        let tile: CGFloat = 0.036
+        let lightSq = mat(NSColor(red: 0.90, green: 0.86, blue: 0.76, alpha: 1), glow: 0.28)
+        let darkSq = mat(NSColor(red: 0.22, green: 0.20, blue: 0.18, alpha: 1), glow: 0.14)
+        let cols = max(4, Int(w / tile))
+        let rows = max(4, Int(d / tile))
+        for ix in 0..<cols {
+            for iz in 0..<rows {
+                let even = ((ix + iz) & 1) == 0
+                let x = -w / 2 + (CGFloat(ix) + 0.5) * (w / CGFloat(cols))
+                let z = zFront - (CGFloat(iz) + 0.5) * (d / CGFloat(rows))
+                let tw = w / CGFloat(cols) * 0.92
+                let td = d / CGFloat(rows) * 0.92
+                room.addChildNode(node(
+                    SCNBox(width: tw, height: 0.003, length: td, chamferRadius: 0),
+                    even ? lightSq : darkSq,
+                    at: SCNVector3(x, -h / 2 + 0.004, z)
+                ))
+            }
+        }
 
         let art = node(
-            SCNBox(width: w * 0.32, height: h * 0.24, length: 0.01, chamferRadius: 0.002),
-            mat(NSColor(red: 0.22, green: 0.72, blue: 0.64, alpha: 1), glow: 0.55),
-            at: SCNVector3(0.02, 0.02, -d + 0.02)
+            SCNBox(width: w * 0.28, height: h * 0.22, length: 0.008, chamferRadius: 0.002),
+            mat(NSColor(red: 0.95, green: 0.78, blue: 0.28, alpha: 1), glow: 0.5),
+            at: SCNVector3(0.0, 0.02, zFront - d + 0.012)
         )
         room.addChildNode(art)
-        let lamp = node(
-            SCNSphere(radius: 0.03),
-            mat(NSColor(red: 1, green: 0.86, blue: 0.62, alpha: 1), glow: 0.85),
-            at: SCNVector3(-w * 0.22, h * 0.18, -d * 0.55)
-        )
-        room.addChildNode(lamp)
+
+        room.addChildNode(volumeGrid(w: w * 0.88, h: h * 0.88, d: d))
     }
 
     /// Window frames on the room walls — not a lattice through the model.
@@ -277,9 +306,9 @@ final class HologramController: NSObject, ObservableObject {
         let g = SCNNode()
         var verts: [SCNVector3] = []
         let x0 = -w / 2, y0 = -h / 2
-        let z0: CGFloat = -0.08
-        let z1 = -d * 0.82
-        let frames = 4
+        let z0: CGFloat = -0.04
+        let z1 = -d * 0.92
+        let frames = 3
         for iz in 0...frames {
             let z = z0 + (z1 - z0) * CGFloat(iz) / CGFloat(frames)
             verts.append(SCNVector3(x0, y0, z))
@@ -326,7 +355,7 @@ final class HologramController: NSObject, ObservableObject {
         m.ambient.contents = color
         m.specular.contents = NSColor(white: 0.95, alpha: 1)
         m.emission.contents = color.blended(withFraction: 1 - glow, of: .black) ?? color
-        m.shininess = 64
+        m.shininess = 90
         m.locksAmbientWithDiffuse = true
         m.isDoubleSided = true
         m.cullMode = .back
@@ -335,16 +364,17 @@ final class HologramController: NSObject, ObservableObject {
         return m
     }
 
-    private func wallMat() -> SCNMaterial {
-        let m = SCNMaterial()
-        m.lightingModel = .constant
-        m.diffuse.contents = NSColor(red: 0.09, green: 0.10, blue: 0.13, alpha: 1)
-        m.emission.contents = NSColor(red: 0.04, green: 0.045, blue: 0.055, alpha: 1)
-        m.isDoubleSided = false
-        m.cullMode = .back
-        m.writesToDepthBuffer = true
-        m.readsFromDepthBuffer = true
-        return m
+    private func faceBox(size: CGFloat) -> SCNNode {
+        let g = SCNBox(width: size, height: size, length: size, chamferRadius: size * 0.07)
+        g.materials = [
+            mat(NSColor(red: 0.15, green: 0.92, blue: 0.88, alpha: 1), glow: 0.32),
+            mat(NSColor(red: 0.32, green: 0.86, blue: 0.38, alpha: 1), glow: 0.32),
+            mat(NSColor(red: 0.96, green: 0.48, blue: 0.12, alpha: 1), glow: 0.32),
+            mat(NSColor(red: 0.86, green: 0.28, blue: 0.78, alpha: 1), glow: 0.32),
+            mat(NSColor(red: 0.96, green: 0.94, blue: 0.86, alpha: 1), glow: 0.28),
+            mat(NSColor(red: 0.16, green: 0.17, blue: 0.20, alpha: 1), glow: 0.2),
+        ]
+        return SCNNode(geometry: g)
     }
 
     private func node(_ geo: SCNGeometry, _ material: SCNMaterial, at p: SCNVector3 = SCNVector3Zero) -> SCNNode {
@@ -470,42 +500,38 @@ final class HologramController: NSObject, ObservableObject {
         return root
     }
 
-    /// Three depth layers: bottle pops out, mug in the glass, books recede.
-    /// Relative parallax is what reads as 3-D on a 2-D screen.
+    /// Looking-Glass / Sony stage: colored cube (faces!), torus to look through,
+    /// sphere in front of the glass, books behind. Relative parallax + occlusion.
     private func buildDiorama() -> SCNNode {
         let root = SCNNode()
-        let wood = mat(NSColor(red: 0.45, green: 0.33, blue: 0.22, alpha: 1), glow: 0.28)
-        let lightSq = mat(NSColor(red: 0.88, green: 0.86, blue: 0.80, alpha: 1), glow: 0.22)
-        let darkSq = mat(NSColor(red: 0.16, green: 0.15, blue: 0.14, alpha: 1), glow: 0.12)
-        let teal = mat(NSColor(red: 0.28, green: 0.62, blue: 0.58, alpha: 1), glow: 0.4)
-        let red = mat(NSColor(red: 0.72, green: 0.28, blue: 0.24, alpha: 1), glow: 0.38)
-        let glass = mat(NSColor(red: 0.55, green: 0.82, blue: 0.76, alpha: 1), glow: 0.45)
+        let gold = mat(NSColor(red: 0.92, green: 0.74, blue: 0.28, alpha: 1), glow: 0.4)
+        let stone = mat(NSColor(red: 0.55, green: 0.52, blue: 0.48, alpha: 1), glow: 0.22)
+        let pop = mat(NSColor(red: 1.0, green: 0.86, blue: 0.18, alpha: 1), glow: 0.55)
+        let teal = mat(NSColor(red: 0.22, green: 0.62, blue: 0.58, alpha: 1), glow: 0.38)
+        let red = mat(NSColor(red: 0.78, green: 0.24, blue: 0.22, alpha: 1), glow: 0.38)
 
-        root.addChildNode(node(
-            SCNBox(width: 0.22, height: 0.016, length: 0.20, chamferRadius: 0.003),
-            wood,
-            at: SCNVector3(0, -0.09, -0.02)
-        ))
-        let tile: CGFloat = 0.036
-        for ix in -2...2 {
-            for iz in -2...2 {
-                let even = ((ix + iz) & 1) == 0
-                root.addChildNode(node(
-                    SCNBox(width: tile * 0.92, height: 0.003, length: tile * 0.92, chamferRadius: 0),
-                    even ? lightSq : darkSq,
-                    at: SCNVector3(CGFloat(ix) * tile, -0.081, CGFloat(iz) * tile - 0.02)
-                ))
-            }
-        }
+        let pedestal = node(SCNCylinder(radius: 0.09, height: 0.018), stone, at: SCNVector3(0, -0.078, 0))
+        root.addChildNode(pedestal)
+
+        let cube = faceBox(size: 0.055)
+        cube.position = SCNVector3(0.0, -0.012, 0.0)
+        cube.eulerAngles.y = 0.18
+        root.addChildNode(cube)
+
+        let ring = node(SCNTorus(ringRadius: 0.078, pipeRadius: 0.016), gold)
+        ring.eulerAngles.x = .pi / 2
+        ring.position = SCNVector3(0.0, -0.008, 0.0)
+        root.addChildNode(ring)
+
+        root.addChildNode(node(SCNSphere(radius: 0.028), pop, at: SCNVector3(0.11, 0.04, 0.09)))
+        root.addChildNode(node(SCNBox(width: 0.08, height: 0.11, length: 0.024, chamferRadius: 0.003), teal, at: SCNVector3(-0.10, -0.02, -0.14)))
+        root.addChildNode(node(SCNBox(width: 0.07, height: 0.09, length: 0.022, chamferRadius: 0.003), red, at: SCNVector3(-0.11, -0.032, -0.17)))
+
         let mug = buildMug()
-        mug.scale = SCNVector3(0.72, 0.72, 0.72)
-        mug.position = SCNVector3(0.0, -0.018, 0)
+        mug.scale = SCNVector3(0.42, 0.42, 0.42)
+        mug.position = SCNVector3(0.095, -0.04, -0.06)
+        mug.eulerAngles.y = -0.7
         root.addChildNode(mug)
-        root.addChildNode(node(SCNBox(width: 0.09, height: 0.13, length: 0.026, chamferRadius: 0.003), teal, at: SCNVector3(-0.08, -0.02, -0.11)))
-        root.addChildNode(node(SCNBox(width: 0.085, height: 0.11, length: 0.024, chamferRadius: 0.003), red, at: SCNVector3(-0.085, -0.03, -0.14)))
-        root.addChildNode(node(SCNCylinder(radius: 0.02, height: 0.09), glass, at: SCNVector3(0.09, -0.035, 0.055)))
-        root.addChildNode(node(SCNSphere(radius: 0.022), glass, at: SCNVector3(0.09, 0.018, 0.055)))
-        root.addChildNode(node(SCNCylinder(radius: 0.008, height: 0.024), glass, at: SCNVector3(0.09, 0.048, 0.055)))
         return root
     }
 }

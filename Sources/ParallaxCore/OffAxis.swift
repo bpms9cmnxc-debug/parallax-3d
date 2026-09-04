@@ -27,9 +27,9 @@ public enum OffAxis {
     /// Lateral gain: a modest head move (~15 % of the frame) must already look *around* the object.
     public static let lateralGain: Float = 2.15
     public static let verticalGain: Float = 1.25
-    /// Extra yaw/pitch of the object. Pure off-axis at a desk is ~10° — not enough to
-    /// see a handle. The centroid stays at the screen; only the facing changes.
-    public static let orbitGain: Float = 2.05
+    /// Extra yaw/pitch of the object so cube faces and the mug handle appear.
+    /// A desk move is only ~12–15°; light-field monitors show ~40°.
+    public static let orbitGain: Float = 1.65
 
     /// Sheared frustum: screen on z = 0, viewer at `eye`. Scene does not rotate.
     public static func frustum(
@@ -42,7 +42,7 @@ public enum OffAxis {
         _ = nearPad
         let z = max(minZ, eye.z)
         let near = OffAxis.near
-        let pad: Float = 1.18
+        let pad: Float = 1.02
         let halfW = screenW * 0.5 * pad
         let halfH = screenH * 0.5 * pad
         let left = (near * (-halfW - eye.x)) / z

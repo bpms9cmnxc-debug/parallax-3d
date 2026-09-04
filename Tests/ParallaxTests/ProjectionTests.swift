@@ -130,6 +130,26 @@ final class ProjectionTests: XCTestCase {
         XCTAssertEqual(w.z, 0.62, accuracy: 0.001)
     }
 
+    func testBackPlaneParallaxOpposesTheHead() {
+        func ndcX(eyeX: Float, worldZ: Float) -> Float {
+            let eye = SIMD3<Float>(eyeX, 0, 0.58)
+            let P = OffAxis.projection(eye: eye, screenW: 0.4, screenH: 0.25)
+            let cam = SIMD4<Float>(0 - eyeX, 0, worldZ - 0.58, 1)
+            let clip = simd_mul(P, cam)
+            return clip.x / clip.w
+        }
+        XCTAssertEqual(ndcX(eyeX: 0.14, worldZ: 0), 0, accuracy: 0.04)
+        XCTAssertEqual(ndcX(eyeX: -0.14, worldZ: 0), 0, accuracy: 0.04)
+        let backFromRight = ndcX(eyeX: 0.14, worldZ: -0.22)
+        let backFromLeft = ndcX(eyeX: -0.14, worldZ: -0.22)
+        XCTAssertGreaterThan(backFromRight, 0.02)
+        XCTAssertLessThan(backFromLeft, -0.02)
+        let frontFromRight = ndcX(eyeX: 0.14, worldZ: 0.08)
+        let frontFromLeft = ndcX(eyeX: -0.14, worldZ: 0.08)
+        XCTAssertLessThan(frontFromRight, -0.02)
+        XCTAssertGreaterThan(frontFromLeft, 0.02)
+    }
+
     func testScreenPlaneOriginStaysCenteredWhenLookingAside() {
         let eye = SIMD3<Float>(0.16, 0.02, 0.58)
         let P = OffAxis.projection(eye: eye, screenW: 0.4, screenH: 0.25)

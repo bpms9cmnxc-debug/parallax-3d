@@ -6,7 +6,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     private let models = [
-        ("diorama", "Diorama", "Flasche vorn, Tasse in der Scheibe, Bücher hinten — echtes Tiefen-Parallax"),
+        ("diorama", "Diorama", "Würfel mit Seitenfarben, Ring zum Durchschauen, Kugel vor der Scheibe"),
         ("mug", "Tasse", "Hohl mit Henkel und Löffel"),
         ("bust", "Büste", "Kopf mit Nase und Ohren"),
         ("car", "Auto", "Karosserie, Räder, Spiegel"),
@@ -18,7 +18,10 @@ struct ContentView: View {
             ParallaxTheme.bg
             HologramView(controller: model.hologram)
                 .ignoresSafeArea()
-            gazeReticle
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.22), lineWidth: 2)
+                .padding(10)
+                .allowsHitTesting(false)
             VStack {
                 header
                 Spacer()
@@ -46,22 +49,6 @@ struct ContentView: View {
         }
     }
 
-    private var gazeReticle: some View {
-        GeometryReader { geo in
-            let x = geo.size.width * CGFloat(0.5 + model.eye.x / 0.28 * 0.42)
-            let y = geo.size.height * CGFloat(0.5 - model.eye.y / 0.18 * 0.38)
-            Circle()
-                .stroke(ParallaxTheme.live.opacity(0.8), lineWidth: 1.2)
-                .frame(width: 28, height: 28)
-                .overlay(Circle().fill(ParallaxTheme.live).frame(width: 5, height: 5))
-                .position(
-                    x: min(geo.size.width - 40, max(40, x)),
-                    y: min(geo.size.height - 40, max(40, y))
-                )
-                .allowsHitTesting(false)
-        }
-    }
-
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
@@ -73,7 +60,7 @@ struct ContentView: View {
                     .font(.system(size: 28, weight: .semibold))
                     .tracking(-0.6)
                     .foregroundStyle(ParallaxTheme.fg)
-                Text("Holografisches 3-D. Diorama mit echter Tiefe. Oben rechts: iPhone LiDAR. Kein Hand-Tracking.")
+                Text("Fenster in einen 36-cm-Kasten. Gelbe Kugel kommt raus, Würfelseiten drehen sich mit dem Kopf. Kein Stereo-Monitor — Motion-Parallax.")
                     .font(.system(size: 13))
                     .foregroundStyle(ParallaxTheme.muted)
                     .frame(maxWidth: 320, alignment: .leading)
@@ -226,7 +213,7 @@ struct ContentView: View {
                 value: Binding(get: { Double(model.sensitivity) }, set: { model.sensitivity = Float($0) }),
                 in: 0.8...2.6
             )
-            Text("Blickwinkel  ·  \(String(format: "%.2f×", model.sensitivity))")
+            Text("Kopfbewegung  ·  auch für iPhone  ·  \(String(format: "%.2f×", model.sensitivity))")
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(ParallaxTheme.muted)
 
